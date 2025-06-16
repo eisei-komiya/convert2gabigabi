@@ -5,6 +5,8 @@
 
 use std::io::Cursor;
 use image::{DynamicImage, ImageOutputFormat};
+use std::ffi::c_void;
+use std::slice;
 
 /// Resize the image bytes by `scale_pct` (e.g., 50.0 = 50%) keeping aspect ratio.
 /// Returns the resized image bytes (same format as input).
@@ -30,6 +32,41 @@ pub fn resize(data: &[u8], scale_pct: f32) -> anyhow::Result<Vec<u8>> {
         }
     }
     Ok(buf)
+}
+
+/// C-compatible resize function for FFI
+#[no_mangle]
+pub extern "C" fn rust_resize(
+    data: *const u8,
+    len: usize,
+    scale_pct: f32,
+    out_len: *mut usize,
+) -> *mut u8 {
+    if data.is_null() || out_len.is_null() {
+        return std::ptr::null_mut();
+    }
+    
+    let input_slice = unsafe { slice::from_raw_parts(data, len) };
+    
+    match resize(input_slice, scale_pct) {
+        Ok(result) => {
+            let result_len = result.len();
+            let result_ptr = result.into_boxed_slice().into_raw() as *mut u8;
+            unsafe { *out_len = result_len; }
+            result_ptr
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// Free memory allocated by rust_resize
+#[no_mangle]
+pub extern "C" fn rust_free_buffer(ptr: *mut u8) {
+    if !ptr.is_null() {
+        unsafe {
+            let _ = Box::from_raw(ptr);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

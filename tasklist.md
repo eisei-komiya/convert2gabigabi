@@ -10,9 +10,9 @@
 
 ## TODO 
 - [A] Rust コア画像縮小ライブラリ枠組み作成 (`resize` 関数, `cargo init`, `cargo test`) ✅ (枠組み作成済み, 実装途中)
-- [A] React Native Native Module Bridge  
-  - Android: jni-rs 経由で Rust 呼び出し  
-  - iOS: C-ABI プロトタイプ (後回し)
+- [A] React Native Native Module Bridge ✅ (Android JNI Bridge 実装済み)
+  - Android: jni-rs 経由で Rust 呼び出し ✅
+  - iOS: C-ABI プロトタイプ (後回し) ⏸️
 - [B] React Native プロジェクト初期化 (TypeScript, Yarn v3)  
   - 必要ライブラリ追加 (`react-native-fs`, `zustand`, `MMKV` など)
 - [B] UI スケルトン作成  
