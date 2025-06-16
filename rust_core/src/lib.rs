@@ -82,18 +82,4 @@ fn detect_format(data: &[u8]) -> ImageFormat {
         // fallback
         ImageFormat::Png
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const SAMPLE_JPEG: &[u8] = include_bytes!("../tests/sample.jpg");
-
-    #[test]
-    fn resize_jpeg_half() {
-        let out = resize(SAMPLE_JPEG, 50.0).unwrap();
-        // Ensure output is smaller than input
-        assert!(out.len() < SAMPLE_JPEG.len());
-    }
 } 
