@@ -9,7 +9,7 @@
 - 要件詳細の精緻化
 
 ## TODO 
-- [A] Rust コア画像縮小ライブラリ枠組み作成 (`resize` 関数, `cargo init`, `cargo test`)
+- [A] Rust コア画像縮小ライブラリ枠組み作成 (`resize` 関数, `cargo init`, `cargo test`) ✅ (枠組み作成済み, 実装途中)
 - [A] React Native Native Module Bridge  
   - Android: jni-rs 経由で Rust 呼び出し  
   - iOS: C-ABI プロトタイプ (後回し)
@@ -30,4 +30,4 @@
 - [B] CI パイプライン (GitHub Actions: Rust + Android build + Jest)
 
 ---
-最終更新: <!-- CURSOR_2025-06-16 -->
+最終更新: <!-- CURSOR_2025-06-16T01:00Z -->
