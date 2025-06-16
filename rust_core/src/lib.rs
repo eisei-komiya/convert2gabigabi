@@ -1,11 +1,11 @@
-#![forbid(unsafe_code)]
+#![allow(unsafe_code)]
+#![forbid(rust_2018_idioms)]
 
 //! Core image resize library for convert2gabigabi.
 //! 現状はバイト列入力・倍率(%)指定でリサイズした JPEG/PNG バイト列を返す。
 
+use image::{DynamicImage, GenericImageView, ImageFormat};
 use std::io::Cursor;
-use image::{DynamicImage, ImageOutputFormat};
-use std::ffi::c_void;
 use std::slice;
 
 /// Resize the image bytes by `scale_pct` (e.g., 50.0 = 50%) keeping aspect ratio.
@@ -23,13 +23,14 @@ pub fn resize(data: &[u8], scale_pct: f32) -> anyhow::Result<Vec<u8>> {
 
     // Encode back in same format
     let mut buf = Vec::new();
-    match detect_format(data) {
+    match detect_format(data)? {
         ImageFormat::Jpeg => {
-            resized.write_to(&mut Cursor::new(&mut buf), ImageOutputFormat::Jpeg(85))?;
+            resized.write_to(&mut Cursor::new(&mut buf), ImageFormat::Jpeg)?;
         }
         ImageFormat::Png => {
-            resized.write_to(&mut Cursor::new(&mut buf), ImageOutputFormat::Png)?;
+            resized.write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)?;
         }
+        _ => anyhow::bail!("Unsupported image format"),
     }
     Ok(buf)
 }
@@ -51,7 +52,7 @@ pub extern "C" fn rust_resize(
     match resize(input_slice, scale_pct) {
         Ok(result) => {
             let result_len = result.len();
-            let result_ptr = result.into_boxed_slice().into_raw() as *mut u8;
+            let result_ptr = Box::into_raw(result.into_boxed_slice()) as *mut u8;
             unsafe { *out_len = result_len; }
             result_ptr
         }
@@ -69,17 +70,6 @@ pub extern "C" fn rust_free_buffer(ptr: *mut u8) {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum ImageFormat {
-    Jpeg,
-    Png,
-}
-
-fn detect_format(data: &[u8]) -> ImageFormat {
-    if data.len() > 2 && data[0] == 0xFF && data[1] == 0xD8 {
-        ImageFormat::Jpeg
-    } else {
-        // fallback
-        ImageFormat::Png
-    }
+fn detect_format(data: &[u8]) -> anyhow::Result<ImageFormat> {
+    image::guess_format(data).map_err(|e| anyhow::anyhow!(e))
 } 
