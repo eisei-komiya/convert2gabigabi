@@ -8,13 +8,13 @@
 - [B] UI スケルトン作成  
   - 画像選択 (端末ファイル)  
   - 倍率 (%) 入力 UI
-- [A] Rust ↔︎ RN 結合テスト (1 枚画像のリサイズ確認) 🔴 (Agent B待ち, Rust環境未設定)
+- [A] Rust ↔︎ RN 結合テスト (1 枚画像のリサイズ確認) 🔄 (Agent B待ち)
 - [B] クリップボード画像入力サポート
 - [B] 変換後プレビュー + 保存処理 (`_gabigabi` 命名, Downloads ディレクトリ)
 - [B] ダウンロードボタン実装
 - [B] コピー(クリップボード)ボタン実装
 - [B] MMKV に倍率プリセット保存／読込
-- [A] Rust 単体テスト (`cargo test`) 🔴 (環境未設定のためブロック)
+- [A] Rust 単体テスト (`cargo test`) ✅ (完了)
 - [B] JS 単体テスト (`jest`)
 - [B] UI テスト (React Native Testing Library)
 - [B] CI パイプライン (GitHub Actions: Rust + Android build + Jest)
