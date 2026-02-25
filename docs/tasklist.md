@@ -14,6 +14,11 @@
   - Dockerfile, docker-compose.yml作成 ✅
   - Expo + React Native Web対応 ✅
   - Web版UI動作確認 🔄 (起動中)
+- AI自律UI開発環境整備 ✅
+  - `CLAUDE.md` 作成 (AIエージェント向け手順書) ✅
+  - Playwright スクリーンショットテスト追加 (`app/e2e/screenshot.spec.ts`) ✅
+  - GitHub Actions `ui-preview` ワークフロー追加 (`.github/workflows/ui-preview.yml`) ✅
+  - `serve` / `@playwright/test` 依存追加 ✅
 
 ## 進行中 🔄
 - 開発ルール策定 (`convert2gabigabi-rule.mdc`)

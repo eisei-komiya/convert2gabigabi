@@ -1,1 +1,3 @@
 rust_core\target\*
+app/web-build/
+app/e2e/screenshots/
