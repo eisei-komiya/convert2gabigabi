@@ -35,5 +35,7 @@
 - [B] UI テスト (React Native Testing Library)
 - [B] CI パイプライン (GitHub Actions: Rust + Android build + Jest)
 
+- [x] FFmpeg ライセンス調査・商用利用可否ドキュメント作成 (`docs/ffmpeg_license.md`) ✅
+
 ---
-最終更新: <!-- CURSOR_2025-06-16 -->
+最終更新: 2026-02-25
