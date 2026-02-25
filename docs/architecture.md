@@ -9,23 +9,31 @@
 ```
 +-----------------------------+
 | React Native (TypeScript)  |
-|    JS / UI / State         |
+|    Presentation (UI)       |
 +-----------▲----------------+
-             | Native Module Bridge (Java/Kotlin, Obj-C)
-+-----------+----------------+
-|   Rust Core (image crate)  |
+             | domain/useResizeImage.ts (UseCase)
++-----------+------------------+
+|  data/ffmpeg/FfmpegProcessor |  ← 主エンジン: FFmpegKit
+|  data/native/RustBridge      |  ← 補助: Rustネイティブモジュール
++------------------------------+
+             |
++-----------------------------+
+|   Rust Core (image crate)  |  ← 既存コード維持（色量子化等）
 |  縮小・再圧縮              |
 +-----------------------------+
 ```
-- JS 側は `NativeModules.GabiGabi` 経由で Rust ライブラリを非同期呼び出し。
+- JS 側は `domain/useResizeImage` UseCase 経由で処理エンジンを選択。
+- FFmpegKit を優先使用。失敗時は Rust ネイティブモジュールへフォールバック。
 - Android は JNI、iOS は C-ABI/Obj-C で Rust に接続。
-- UI からは単純な Promise (`resize(uri, pct)`) を返す API に集約。
+- UI からは単純な Promise (`resizeImage(uri, pct)`) を返す API に集約。
 
 ## キーポイント
+- FFmpegKit を主エンジンとして使い、`scale` フィルタ + `-q:v` でリサイズ＆ガビガビ圧縮を実現。
+- Rust コアは既存コードを維持したまま、FFmpegで対応しにくい色量子化等の補助エンジンとして使用。
 - Rust 側関数は `fn resize(data: &[u8], scale: f32) -> Vec<u8>` のように **バイト列のみを受け渡し**。UI 実装と完全分離。
 - React Native Native Module ⇔ Rust は [jni-rs] / C-ABI で薄いブリッジ。Swift でも同じ DLL を呼べる。
-- 画像の読み込み・表示はプラットフォーム側 (Glide/ImageDecoder) に任せ、重い計算だけ Rust に委譲。
-- Clean Architecture を採用し、`domain` が Rust ラッパーを呼ぶだけの構造に。
+- 画像の読み込み・表示はプラットフォーム側 (Glide/ImageDecoder) に任せ、重い計算だけ FFmpeg/Rust に委譲。
+- Clean Architecture を採用し、`domain` が処理エンジン選択ロジックを持ち、`data` 層が具体実装を担当。
 
 ## メリット
 - **再利用性**: Rust Core は Android/iOS/デスクトップ/WebAssembly に横展開可。
