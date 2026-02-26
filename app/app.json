@@ -40,7 +40,10 @@
       "expo-dev-client"
     ],
     "extra": {
-      "eas": {}
-    }
+      "eas": {
+        "projectId": "4deaf693-bafb-4633-bc03-57c3235fb8fb"
+      }
+    },
+    "owner": "eisei-komiya"
   }
 }
