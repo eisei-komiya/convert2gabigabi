@@ -9,7 +9,7 @@
     "start": "react-native start",
     "test": "jest",
     "web": "npx expo start --web",
-    "expo": "npx expo start"
+    "expo-start": "npx expo start"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.80.0",
