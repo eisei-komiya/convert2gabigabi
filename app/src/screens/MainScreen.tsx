@@ -1,8 +1,9 @@
 import React from 'react';
-import {SafeAreaView, StyleSheet, Text, View, TouchableOpacity} from 'react-native';
+import {SafeAreaView, StyleSheet, Text, View, TouchableOpacity, Alert} from 'react-native';
 import ImagePicker from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import {useAppStore} from '../state/store';
+import {resizeImage} from '../domain/useResizeImage';
 
 const MainScreen = () => {
   const {
@@ -11,6 +12,8 @@ const MainScreen = () => {
     isProcessing,
     setSelectedImage,
     setResizePercent,
+    setProcessedImage,
+    setIsProcessing,
   } = useAppStore();
 
   const handleImageSelect = (imageUri: string) => {
@@ -21,9 +24,20 @@ const MainScreen = () => {
     setResizePercent(percent);
   };
 
-  const handleProcess = () => {
-    // TODO: 画像処理機能を実装
-    console.log('Processing image...');
+  const handleProcess = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await resizeImage(selectedImage, resizePercent);
+      setProcessedImage(result.outputUri);
+      console.log(`処理完了 (engine: ${result.engine}):`, result.outputUri);
+    } catch (err) {
+      Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

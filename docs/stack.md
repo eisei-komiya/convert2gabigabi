@@ -12,8 +12,12 @@
   宣言的 UI。Expo Vector Icons でシンプルな白基調デザイン。
 
 ## 画像処理
-- **Rust (image + mozjpeg + oxipng)**  
-  Rust でバイナリレベル縮小・再圧縮。高速・メモリ安全。FFI(JNI/Obj-C) で呼び出し。
+- **FFmpegKit (`ffmpeg-kit-react-native`)**  
+  主要な画像縮小・JPEG再圧縮エンジン。LGPL ビルドの .so を APK に同梱して完全オフライン動作。
+  `scale` フィルタでリサイズ、`-q:v` で圧縮品質を調整してガビガビ化を実現。
+- **Rust (image + jpeg-encoder)**  
+  FFmpegで対応しきれない高精度な色量子化・ポスタリゼーション処理に使用。
+  既存コードを維持し、必要な場合に JNI/C-ABI 経由で呼び出す。
 - **android.graphics.Bitmap API**  
   変換前後の Bitmap 生成とプレビュー表示用途のみ。
 - **Glide 4.x**  
@@ -21,6 +25,7 @@
 
 ## 主要ライブラリ／ツール
 - **react-native-fs**：ファイルシステムアクセス
+- **ffmpeg-kit-react-native**：FFmpeg経由の画像処理（リサイズ・圧縮）
 - **@react-native-clipboard/clipboard**：クリップボード操作
 - **react-native-image-resizer**：ネイティブ→Rust ブリッジ参考実装
 - **react-navigation**：画面遷移
