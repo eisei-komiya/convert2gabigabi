@@ -33,65 +33,36 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build Android APK (preview)
+      - name: Build Android APK (preview) and wait
         working-directory: app
         id: eas-build
         run: |
-          BUILD_OUTPUT=$(eas build \
+          # --wait でビルド完了まで待機、--json で結果をJSON出力
+          BUILD_JSON=$(eas build \
             --platform android \
             --profile preview \
             --non-interactive \
-            --json 2>/dev/null)
-          echo "build_output=$BUILD_OUTPUT" >> $GITHUB_OUTPUT
-          BUILD_URL=$(echo "$BUILD_OUTPUT" | jq -r '.[0].buildDetailsPageUrl // empty')
-          ARTIFACT_URL=$(echo "$BUILD_OUTPUT" | jq -r '.[0].artifacts.buildUrl // empty')
+            --wait \
+            --json)
+          echo "Build JSON output:"
+          echo "$BUILD_JSON"
+
+          BUILD_URL=$(echo "$BUILD_JSON" | jq -r '.[0].buildDetailsPageUrl // empty')
+          ARTIFACT_URL=$(echo "$BUILD_JSON" | jq -r '.[0].artifacts.buildUrl // empty')
+
           echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
           echo "artifact_url=$ARTIFACT_URL" >> $GITHUB_OUTPUT
           echo "Build URL: $BUILD_URL"
           echo "Artifact URL: $ARTIFACT_URL"
 
-      - name: Wait for build and get artifact URL
-        id: wait-build
-        working-directory: app
-        run: |
-          # ビルドが非同期の場合はポーリングして完了を待つ
-          for i in $(seq 1 30); do
-            STATUS=$(eas build:list \
-              --platform android \
-              --limit 1 \
-              --json 2>/dev/null | jq -r '.[0].status // empty')
-            ARTIFACT_URL=$(eas build:list \
-              --platform android \
-              --limit 1 \
-              --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl // empty')
-            echo "Status: $STATUS, Attempt: $i/30"
-            if [ "$STATUS" = "FINISHED" ] && [ -n "$ARTIFACT_URL" ]; then
-              echo "artifact_url=$ARTIFACT_URL" >> $GITHUB_OUTPUT
-              break
-            fi
-            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "Build failed with status: $STATUS"
-              exit 1
-            fi
-            sleep 60
-          done
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Generate QR code and comment on PR
-        if: github.event_name == 'pull_request'
+      - name: Comment QR code on PR
+        if: github.event_name == 'pull_request' && steps.eas-build.outputs.artifact_url != ''
         uses: actions/github-script@v7
         with:
           script: |
-            const artifactUrl = '${{ steps.wait-build.outputs.artifact_url }}';
+            const artifactUrl = '${{ steps.eas-build.outputs.artifact_url }}';
             const buildUrl = '${{ steps.eas-build.outputs.build_url }}';
 
-            if (!artifactUrl) {
-              console.log('No artifact URL found, skipping QR comment');
-              return;
-            }
-
-            // QRコード画像URL (shields.io経由で生成)
             const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(artifactUrl)}`;
 
             const body = [
