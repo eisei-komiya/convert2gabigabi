@@ -17,13 +17,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eiseikomiya.convert2gabigabi"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.eiseikomiya.convert2gabigabi"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -33,6 +35,14 @@
       "ios",
       "android",
       "web"
-    ]
+    ],
+    "plugins": [
+      "expo-dev-client"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
   }
 }
