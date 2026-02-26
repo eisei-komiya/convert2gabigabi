@@ -36,9 +36,7 @@
       "android",
       "web"
     ],
-    "plugins": [
-      "expo-dev-client"
-    ],
+    "plugins": [],
     "extra": {
       "eas": {
         "projectId": "4deaf693-bafb-4633-bc03-57c3235fb8fb"
