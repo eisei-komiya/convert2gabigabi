@@ -11,6 +11,7 @@ import ImagePicker from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
+import {compressForDiscord} from '../domain/useDiscordCompress';
 import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertImage';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
@@ -77,6 +78,28 @@ const MainScreen = () => {
       console.log(`フォーマット変換完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
       Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDiscordCompress = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await compressForDiscord(selectedImage);
+      setProcessedImage(result.outputUri);
+      const sizeMB = (result.outputBytes / (1024 * 1024)).toFixed(2);
+      const ratioPct = Math.round((1 - result.compressionRatio) * 100);
+      if (result.outputUri === selectedImage) {
+        Alert.alert('完了', `すでに10MB以下です（${sizeMB} MB）`);
+      } else {
+        Alert.alert('圧縮完了', `${sizeMB} MB（${ratioPct}% 削減）`);
+      }
+    } catch (err) {
+      Alert.alert('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -164,6 +187,16 @@ const MainScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={[styles.discordButton, !selectedImage && styles.disabledButton]}
+          onPress={handleDiscordCompress}
+          disabled={!selectedImage || isProcessing}
+        >
+          <Text style={styles.buttonText}>
+            {isProcessing ? '処理中...' : 'Discord用に圧縮 (10MB以下)'}
+          </Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.footer}>
         <Text style={styles.footerText}>
@@ -291,6 +324,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 8,
+    alignItems: 'center',
+  },
+  discordButton: {
+    width: '100%',
+    backgroundColor: '#5865F2',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 8,
+    marginTop: 12,
     alignItems: 'center',
   },
   disabledButton: {
