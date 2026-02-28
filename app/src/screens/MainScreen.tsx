@@ -4,6 +4,7 @@ import ImagePicker from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
+import {compressForDiscord} from '../domain/useDiscordCompress';
 
 const MainScreen = () => {
   const {
@@ -40,6 +41,28 @@ const MainScreen = () => {
     }
   };
 
+  const handleDiscordCompress = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await compressForDiscord(selectedImage);
+      setProcessedImage(result.outputUri);
+      const sizeMB = (result.outputBytes / (1024 * 1024)).toFixed(2);
+      const ratioPct = Math.round((1 - result.compressionRatio) * 100);
+      if (result.outputUri === selectedImage) {
+        Alert.alert('完了', `すでに10MB以下です（${sizeMB} MB）`);
+      } else {
+        Alert.alert('圧縮完了', `${sizeMB} MB（${ratioPct}% 削減）`);
+      }
+    } catch (err) {
+      Alert.alert('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -58,6 +81,15 @@ const MainScreen = () => {
         >
           <Text style={styles.buttonText}>
             {isProcessing ? '処理中...' : '画像を変換'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.discordButton, !selectedImage && styles.disabledButton]}
+          onPress={handleDiscordCompress}
+          disabled={!selectedImage || isProcessing}
+        >
+          <Text style={styles.buttonText}>
+            {isProcessing ? '処理中...' : 'Discord用に圧縮 (10MB以下)'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -103,6 +135,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 20,
   },
+  discordButton: {
+    backgroundColor: '#5865F2',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 8,
+    marginTop: 12,
+  },
   disabledButton: {
     backgroundColor: '#ccc',
   },
@@ -124,4 +163,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MainScreen; 
+export default MainScreen;
