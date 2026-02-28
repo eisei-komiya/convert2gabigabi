@@ -16,6 +16,7 @@ import ResizeSlider from '../components/ResizeSlider';
 import FileSizeLabel from '../components/FileSizeLabel';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
+import {compressForDiscord} from '../domain/useDiscordCompress';
 import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertImage';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
@@ -98,6 +99,28 @@ const MainScreen = () => {
   const handleReset = () => {
     setSelectedImage(null);
     setProcessedImage(null);
+  };
+
+  const handleDiscordCompress = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await compressForDiscord(selectedImage);
+      setProcessedImage(result.outputUri);
+      const sizeMB = (result.outputBytes / (1024 * 1024)).toFixed(2);
+      const ratioPct = Math.round((1 - result.compressionRatio) * 100);
+      if (result.outputUri === selectedImage) {
+        Alert.alert('完了', `すでに10MB以下です（${sizeMB} MB）`);
+      } else {
+        Alert.alert('圧縮完了', `${sizeMB} MB（${ratioPct}% 削減）`);
+      }
+    } catch (err) {
+      Alert.alert('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -236,6 +259,17 @@ const MainScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Discord Compress Button ── */}
+        <TouchableOpacity
+          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+          onPress={handleDiscordCompress}
+          disabled={!selectedImage || isProcessing}
+          activeOpacity={0.8}>
+          <Text style={styles.buttonText}>
+            {isProcessing ? '処理中...' : '📤 Discord用に圧縮 (10MB以下)'}
+          </Text>
+        </TouchableOpacity>
 
         {(selectedImage || processedImage) && (
           <TouchableOpacity
@@ -493,6 +527,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: ACCENT2,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  discordButton: {
+    backgroundColor: '#5865F2',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#5865F2',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
     shadowRadius: 8,
