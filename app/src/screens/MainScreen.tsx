@@ -1,20 +1,38 @@
 import React from 'react';
-import {SafeAreaView, StyleSheet, Text, View, TouchableOpacity, Alert} from 'react-native';
+import {
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import ImagePicker from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
+import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertImage';
+
+const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
+  {label: 'JPEG', value: 'jpeg'},
+  {label: 'PNG', value: 'png'},
+  {label: 'WebP', value: 'webp'},
+];
 
 const MainScreen = () => {
   const {
     selectedImage,
     resizePercent,
     isProcessing,
+    outputFormat,
+    convertQuality,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
     setIsProcessing,
+    setOutputFormat,
+    setConvertQuality,
   } = useAppStore();
 
   const handleImageSelect = (imageUri: string) => {
@@ -33,7 +51,31 @@ const MainScreen = () => {
     try {
       const result = await resizeImage(selectedImage, resizePercent);
       setProcessedImage(result.outputUri);
-      console.log(`処理完了 (engine: ${result.engine}):`, result.outputUri);
+      console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
+    } catch (err) {
+      Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await useConvertImage(selectedImage, {
+        outputFormat,
+        quality: convertQuality,
+      });
+      setProcessedImage(result.outputUri);
+      const sizeStr = formatBytes(result.outputBytes);
+      Alert.alert(
+        '変換完了',
+        `${outputFormat.toUpperCase()}形式に変換しました\nサイズ: ${sizeStr}`,
+      );
+      console.log(`フォーマット変換完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
       Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
@@ -74,15 +116,78 @@ const MainScreen = () => {
           selectedImage={selectedImage || undefined}
         />
         <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
-        <TouchableOpacity 
-          style={[styles.processButton, !selectedImage && styles.disabledButton]}
-          onPress={handleProcess}
-          disabled={!selectedImage || isProcessing}
-        >
-          <Text style={styles.buttonText}>
-            {isProcessing ? '処理中...' : '画像を変換'}
-          </Text>
-        </TouchableOpacity>
+
+        {/* フォーマット変換セクション */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>出力フォーマット</Text>
+          <View style={styles.formatRow}>
+            {FORMAT_OPTIONS.map(opt => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.formatButton,
+                  outputFormat === opt.value && styles.formatButtonActive,
+                ]}
+                onPress={() => setOutputFormat(opt.value)}>
+                <Text
+                  style={[
+                    styles.formatButtonText,
+                    outputFormat === opt.value && styles.formatButtonTextActive,
+                  ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {outputFormat !== 'png' && (
+            <View style={styles.qualityRow}>
+              <Text style={styles.qualityLabel}>
+                品質: {convertQuality}%
+              </Text>
+              <View style={styles.qualityButtons}>
+                {[60, 75, 85, 95].map(q => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[
+                      styles.qualityPreset,
+                      convertQuality === q && styles.qualityPresetActive,
+                    ]}
+                    onPress={() => setConvertQuality(q)}>
+                    <Text
+                      style={[
+                        styles.qualityPresetText,
+                        convertQuality === q && styles.qualityPresetTextActive,
+                      ]}>
+                      {q}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.processButton, !selectedImage && styles.disabledButton]}
+            onPress={handleProcess}
+            disabled={!selectedImage || isProcessing}>
+            <Text style={styles.buttonText}>
+              {isProcessing ? '処理中...' : 'ガビガビ化'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.convertButton, !selectedImage && styles.disabledButton]}
+            onPress={handleConvert}
+            disabled={!selectedImage || isProcessing}>
+            <Text style={styles.buttonText}>
+              {isProcessing ? '処理中...' : 'フォーマット変換'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           style={[styles.discordButton, !selectedImage && styles.disabledButton]}
           onPress={handleDiscordCompress}
@@ -95,10 +200,9 @@ const MainScreen = () => {
       </View>
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          {selectedImage 
-            ? `選択された画像を${resizePercent}%にリサイズします` 
-            : '画像を選択してください'
-          }
+          {selectedImage
+            ? `選択された画像を${resizePercent}%にリサイズ / ${outputFormat.toUpperCase()}に変換`
+            : '画像を選択してください'}
         </Text>
       </View>
     </SafeAreaView>
@@ -128,26 +232,115 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  processButton: {
-    backgroundColor: '#007bff',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
+  sectionContainer: {
+    width: '100%',
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#fff',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  formatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  formatButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  formatButtonActive: {
+    borderColor: '#007bff',
+    backgroundColor: '#007bff',
+  },
+  formatButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  formatButtonTextActive: {
+    color: '#fff',
+  },
+  qualityRow: {
+    marginTop: 12,
+  },
+  qualityLabel: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 6,
+  },
+  qualityButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  qualityPreset: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#f9f9f9',
+  },
+  qualityPresetActive: {
+    borderColor: '#28a745',
+    backgroundColor: '#28a745',
+  },
+  qualityPresetText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  qualityPresetTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginTop: 20,
   },
+  processButton: {
+    flex: 1,
+    backgroundColor: '#007bff',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  convertButton: {
+    flex: 1,
+    backgroundColor: '#28a745',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
   discordButton: {
+    width: '100%',
     backgroundColor: '#5865F2',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 8,
     marginTop: 12,
+    alignItems: 'center',
   },
   disabledButton: {
     backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   footer: {
