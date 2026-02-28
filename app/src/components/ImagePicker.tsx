@@ -1,5 +1,6 @@
 import React from 'react';
-import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
+import {View, TouchableOpacity, Text, StyleSheet, Image, Alert} from 'react-native';
+import * as ExpoImagePicker from 'expo-image-picker';
 
 interface ImagePickerProps {
   onImageSelect: (imageUri: string) => void;
@@ -12,12 +13,23 @@ const BORDER = '#2a2a2a';
 const TEXT_SECONDARY = '#888';
 
 const ImagePicker: React.FC<ImagePickerProps> = ({
-  onImageSelect: _onImageSelect,
+  onImageSelect,
   selectedImage,
 }) => {
-  const handlePress = () => {
-    // TODO: 画像選択機能を実装 (#11)
-    console.log('Image picker pressed');
+  const handlePress = async () => {
+    const { status } = await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要', 'ギャラリーへのアクセスを許可してください');
+      return;
+    }
+    const result = await ExpoImagePicker.launchImageLibraryAsync({
+      mediaTypes: ExpoImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0]) {
+      onImageSelect(result.assets[0].uri);
+    }
   };
 
   return (

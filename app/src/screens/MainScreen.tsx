@@ -16,6 +16,13 @@ import ResizeSlider from '../components/ResizeSlider';
 import FileSizeLabel from '../components/FileSizeLabel';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
+import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertImage';
+
+const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
+  {label: 'JPEG', value: 'jpeg'},
+  {label: 'PNG', value: 'png'},
+  {label: 'WebP', value: 'webp'},
+];
 
 const MainScreen = () => {
   const {
@@ -23,10 +30,14 @@ const MainScreen = () => {
     resizePercent,
     isProcessing,
     processedImage,
+    outputFormat,
+    convertQuality,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
     setIsProcessing,
+    setOutputFormat,
+    setConvertQuality,
   } = useAppStore();
 
   const handleImageSelect = useCallback(
@@ -52,6 +63,31 @@ const MainScreen = () => {
     try {
       const result = await resizeImage(selectedImage, resizePercent);
       setProcessedImage(result.outputUri);
+      console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
+    } catch (err) {
+      Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!selectedImage) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const result = await useConvertImage(selectedImage, {
+        outputFormat,
+        quality: convertQuality,
+      });
+      setProcessedImage(result.outputUri);
+      const sizeStr = formatBytes(result.outputBytes);
+      Alert.alert(
+        '変換完了',
+        `${outputFormat.toUpperCase()}形式に変換しました\nサイズ: ${sizeStr}`,
+      );
+      console.log(`フォーマット変換完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
       Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
@@ -122,21 +158,84 @@ const MainScreen = () => {
           <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
         </View>
 
-        {/* ── Action Buttons ── */}
-        <TouchableOpacity
-          style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
-          onPress={handleProcess}
-          disabled={!selectedImage || isProcessing}
-          activeOpacity={0.8}>
-          {isProcessing ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.buttonText}> 処理中...</Text>
+        {/* ── Format Conversion Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>出力フォーマット</Text>
+          <View style={styles.formatRow}>
+            {FORMAT_OPTIONS.map(opt => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.formatButton,
+                  outputFormat === opt.value && styles.formatButtonActive,
+                ]}
+                onPress={() => setOutputFormat(opt.value)}>
+                <Text
+                  style={[
+                    styles.formatButtonText,
+                    outputFormat === opt.value && styles.formatButtonTextActive,
+                  ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {outputFormat !== 'png' && (
+            <View style={styles.qualityRow}>
+              <Text style={styles.qualityLabel}>
+                品質: {convertQuality}%
+              </Text>
+              <View style={styles.qualityButtons}>
+                {[60, 75, 85, 95].map(q => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[
+                      styles.qualityPreset,
+                      convertQuality === q && styles.qualityPresetActive,
+                    ]}
+                    onPress={() => setConvertQuality(q)}>
+                    <Text
+                      style={[
+                        styles.qualityPresetText,
+                        convertQuality === q && styles.qualityPresetTextActive,
+                      ]}>
+                      {q}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          ) : (
-            <Text style={styles.buttonText}>⚡ 変換する</Text>
           )}
-        </TouchableOpacity>
+        </View>
+
+        {/* ── Action Buttons ── */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            onPress={handleProcess}
+            disabled={!selectedImage || isProcessing}
+            activeOpacity={0.8}>
+            {isProcessing ? (
+              <View style={styles.processingRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.buttonText}> 処理中...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>⚡ ガビガビ化</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.convertButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            onPress={handleConvert}
+            disabled={!selectedImage || isProcessing}
+            activeOpacity={0.8}>
+            <Text style={styles.buttonText}>
+              {isProcessing ? '処理中...' : 'フォーマット変換'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {(selectedImage || processedImage) && (
           <TouchableOpacity
@@ -292,14 +391,108 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  /* format section */
+  sectionContainer: {
+    backgroundColor: CARD_BG,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  formatRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  formatButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: 'center',
+    backgroundColor: '#222',
+  },
+  formatButtonActive: {
+    borderColor: ACCENT,
+    backgroundColor: ACCENT,
+  },
+  formatButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+  },
+  formatButtonTextActive: {
+    color: '#fff',
+  },
+  qualityRow: {
+    marginTop: 12,
+  },
+  qualityLabel: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+    marginBottom: 8,
+  },
+  qualityButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  qualityPreset: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: '#222',
+  },
+  qualityPresetActive: {
+    borderColor: ACCENT2,
+    backgroundColor: ACCENT2,
+  },
+  qualityPresetText: {
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+  },
+  qualityPresetTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+
+  /* button row */
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+
   /* process button */
   processButton: {
+    flex: 1,
     backgroundColor: ACCENT,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 12,
     shadowColor: ACCENT,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  convertButton: {
+    flex: 1,
+    backgroundColor: ACCENT2,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: ACCENT2,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
     shadowRadius: 8,
