@@ -11,6 +11,8 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import FileSizeLabel from '../components/FileSizeLabel';
@@ -103,6 +105,39 @@ const MainScreen = () => {
       Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!processedImage) {
+      return;
+    }
+    const {status} = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要', 'カメラロールへのアクセスを許可してください');
+      return;
+    }
+    try {
+      await MediaLibrary.saveToLibraryAsync(processedImage);
+      Alert.alert('保存完了', 'カメラロールに保存しました');
+    } catch (err) {
+      Alert.alert('エラー', `保存に失敗しました: ${String(err)}`);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!processedImage) {
+      return;
+    }
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('共有不可', 'このデバイスでは共有機能が利用できません');
+        return;
+      }
+      await Sharing.shareAsync(processedImage);
+    } catch (err) {
+      Alert.alert('エラー', `共有に失敗しました: ${String(err)}`);
     }
   };
 
@@ -304,6 +339,25 @@ const MainScreen = () => {
             {isProcessing ? '処理中...' : '📤 Discord用に圧縮 (10MB以下)'}
           </Text>
         </TouchableOpacity>
+
+        {/* ── Save / Share Buttons ── */}
+        {processedImage && (
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.saveButton]}
+              onPress={handleSave}
+              activeOpacity={0.8}>
+              <Text style={styles.buttonText}>💾 カメラロールに保存</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.shareButton]}
+              onPress={handleShare}
+              activeOpacity={0.8}>
+              <Text style={styles.buttonText}>🔗 共有</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {(selectedImage || processedImage) && (
           <TouchableOpacity
@@ -596,6 +650,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+
+  /* save / share buttons */
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#2ecc71',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#2ecc71',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  shareButton: {
+    flex: 1,
+    backgroundColor: '#3498db',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#3498db',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
   /* reset button */
