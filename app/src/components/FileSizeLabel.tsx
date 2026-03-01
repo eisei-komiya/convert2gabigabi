@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 interface FileSizeLabelProps {
   label: string;
@@ -28,11 +28,16 @@ const FileSizeLabel: React.FC<FileSizeLabelProps> = ({label, uri}) => {
       setSize(null);
       return;
     }
-    // Strip file:// prefix if present for RNFS
-    const path = uri.startsWith('file://') ? uri.slice(7) : uri;
-    RNFS.stat(path)
-      .then(stat => {
-        setSize(formatBytes(stat.size));
+    // expo-file-system accepts file:// URIs directly
+    const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+    FileSystem.getInfoAsync(fileUri, { size: true })
+      .then(info => {
+        if (info.exists) {
+          const bytes = (info as FileSystem.FileInfo & { size: number }).size ?? 0;
+          setSize(formatBytes(bytes));
+        } else {
+          setSize('—');
+        }
       })
       .catch(() => {
         setSize('—');

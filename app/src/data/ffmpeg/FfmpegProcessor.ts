@@ -1,5 +1,5 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 export interface FfmpegProcessResult {
   outputUri: string;
@@ -41,7 +41,9 @@ export async function processWithFfmpeg(
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
   const stem = fileName.replace(/\.[^.]+$/, '');
   const ext = fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg';
-  const outputPath = `${RNFS.CachesDirectoryPath}/${stem}_gabigabi${ext}`;
+  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
+  const outputUri = `${cacheDir}${stem}_gabigabi${ext}`;
+  const outputPath = outputUri.replace('file://', '');
 
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
   const scale = scalePct / 100;
@@ -63,9 +65,12 @@ export async function processWithFfmpeg(
     throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
   }
 
-  const stat = await RNFS.stat(outputPath);
+  const info = await FileSystem.getInfoAsync(outputUri, { size: true });
+  if (!info.exists) {
+    throw new Error('FFmpeg出力ファイルが見つかりません');
+  }
   return {
-    outputUri: `file://${outputPath}`,
-    outputBytes: Number(stat.size),
+    outputUri,
+    outputBytes: (info as FileSystem.FileInfo & { size: number }).size ?? 0,
   };
 }
