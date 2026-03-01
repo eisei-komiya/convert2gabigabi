@@ -1,12 +1,12 @@
 name: EAS Build (Android Preview)
 
 on:
-  pull_request:
-    branches: [master]
-    paths:
-      - 'app/**'
-      - '.github/workflows/eas-build.yml'
   workflow_dispatch:
+    inputs:
+      message:
+        description: 'ビルドメモ（任意）'
+        required: false
+        default: 'manual build'
 
 jobs:
   build:
