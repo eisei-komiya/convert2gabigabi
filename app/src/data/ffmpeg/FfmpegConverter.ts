@@ -1,5 +1,5 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp';
 
@@ -36,7 +36,9 @@ export async function convertImage(
     webp: '.webp',
   };
   const ext = extMap[outputFormat];
-  const outputPath = `${RNFS.CachesDirectoryPath}/${stem}_converted${ext}`;
+  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
+  const outputUri = `${cacheDir}${stem}_converted${ext}`;
+  const outputPath = outputUri.replace('file://', '');
 
   // フォーマット別のFFmpegオプションを構築
   let qualityArgs: string;
@@ -73,9 +75,12 @@ export async function convertImage(
     throw new Error(`FFmpegフォーマット変換に失敗しました: ${logs}`);
   }
 
-  const stat = await RNFS.stat(outputPath);
+  const info = await FileSystem.getInfoAsync(outputUri, { size: true });
+  if (!info.exists) {
+    throw new Error('FFmpeg出力ファイルが見つかりません');
+  }
   return {
-    outputUri: `file://${outputPath}`,
-    outputBytes: Number(stat.size),
+    outputUri,
+    outputBytes: (info as FileSystem.FileInfo & { size: number }).size ?? 0,
   };
 }

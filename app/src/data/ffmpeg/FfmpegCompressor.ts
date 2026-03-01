@@ -1,5 +1,5 @@
 import { FFmpegKit, FFmpegKitConfig, ReturnCode } from 'ffmpeg-kit-react-native';
-import RNFS from 'react-native-fs';
+import * as FileSystem from 'expo-file-system';
 
 export interface CompressResult {
   outputUri: string;
@@ -51,8 +51,8 @@ async function compressImageToTarget(
   targetBytes: number,
 ): Promise<CompressResult> {
   const inputPath = inputUri.replace('file://', '');
-  const stat = await RNFS.stat(inputPath);
-  const originalBytes = Number(stat.size);
+  const info = await FileSystem.getInfoAsync(inputUri, { size: true });
+  const originalBytes = (info as FileSystem.FileInfo & { size: number }).size ?? 0;
 
   if (originalBytes <= targetBytes) {
     return {
@@ -63,7 +63,9 @@ async function compressImageToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'image';
-  const outputPath = `${RNFS.CachesDirectoryPath}/${stem}_discord.jpg`;
+  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
+  const outputUri = `${cacheDir}${stem}_discord.jpg`;
+  const outputPath = outputUri.replace('file://', '');
 
   let lo = 1;
   let hi = 31; // FFmpeg -q:v range: 1 (best) to 31 (worst)
@@ -86,8 +88,8 @@ async function compressImageToTarget(
       throw new Error('FFmpeg画像圧縮に失敗しました');
     }
 
-    const outStat = await RNFS.stat(outputPath);
-    const outBytes = Number(outStat.size);
+    const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
+    const outBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
 
     if (outBytes <= targetBytes) {
       bestQv = mid;
@@ -112,12 +114,12 @@ async function compressImageToTarget(
     if (!ReturnCode.isSuccess(rc)) {
       throw new Error('FFmpeg画像圧縮（スケールダウン）に失敗しました');
     }
-    const outStat = await RNFS.stat(outputPath);
-    bestBytes = Number(outStat.size);
+    const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
+    bestBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   }
 
   return {
-    outputUri: `file://${outputPath}`,
+    outputUri,
     outputBytes: bestBytes,
     compressionRatio: originalBytes > 0 ? bestBytes / originalBytes : 1,
   };
@@ -134,8 +136,8 @@ async function compressVideoToTarget(
   targetBytes: number,
 ): Promise<CompressResult> {
   const inputPath = inputUri.replace('file://', '');
-  const stat = await RNFS.stat(inputPath);
-  const originalBytes = Number(stat.size);
+  const info = await FileSystem.getInfoAsync(inputUri, { size: true });
+  const originalBytes = (info as FileSystem.FileInfo & { size: number }).size ?? 0;
 
   if (originalBytes <= targetBytes) {
     return {
@@ -159,7 +161,9 @@ async function compressVideoToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
-  const outputPath = `${RNFS.CachesDirectoryPath}/${stem}_discord.mp4`;
+  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
+  const outputUri = `${cacheDir}${stem}_discord.mp4`;
+  const outputPath = outputUri.replace('file://', '');
 
   const cmd = [
     '-y',
@@ -179,11 +183,11 @@ async function compressVideoToTarget(
     throw new Error(`FFmpeg動画圧縮に失敗しました: ${logs}`);
   }
 
-  const outStat = await RNFS.stat(outputPath);
-  const outputBytes = Number(outStat.size);
+  const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
+  const outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
 
   return {
-    outputUri: `file://${outputPath}`,
+    outputUri,
     outputBytes,
     compressionRatio: originalBytes > 0 ? outputBytes / originalBytes : 1,
   };
