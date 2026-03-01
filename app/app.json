@@ -17,13 +17,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eiseikomiya.convert2gabigabi"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.eiseikomiya.convert2gabigabi"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -33,6 +35,13 @@
       "ios",
       "android",
       "web"
-    ]
+    ],
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "4deaf693-bafb-4633-bc03-57c3235fb8fb"
+      }
+    },
+    "owner": "eisei-komiya"
   }
 }
