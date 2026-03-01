@@ -8,12 +8,14 @@ interface AppState {
   isProcessing: boolean;
   outputFormat: ImageFormat;
   convertQuality: number;
+  gabigabiLevel: number;
   setSelectedImage: (image: string | null) => void;
   setResizePercent: (percent: number) => void;
   setProcessedImage: (image: string | null) => void;
   setIsProcessing: (processing: boolean) => void;
   setOutputFormat: (format: ImageFormat) => void;
   setConvertQuality: (quality: number) => void;
+  setGabigabiLevel: (level: number) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -23,10 +25,12 @@ export const useAppStore = create<AppState>(set => ({
   isProcessing: false,
   outputFormat: 'jpeg',
   convertQuality: 85,
+  gabigabiLevel: 2,
   setSelectedImage: image => set({selectedImage: image}),
   setResizePercent: percent => set({resizePercent: percent}),
   setProcessedImage: image => set({processedImage: image}),
   setIsProcessing: processing => set({isProcessing: processing}),
   setOutputFormat: format => set({outputFormat: format}),
   setConvertQuality: quality => set({convertQuality: quality}),
+  setGabigabiLevel: level => set({gabigabiLevel: level}),
 }));

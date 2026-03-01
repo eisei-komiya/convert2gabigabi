@@ -25,6 +25,14 @@ const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'WebP', value: 'webp'},
 ];
 
+const GABIGABI_LEVELS: {label: string; value: number}[] = [
+  {label: '1 軽微', value: 1},
+  {label: '2 普通', value: 2},
+  {label: '3 重め', value: 3},
+  {label: '4 極重', value: 4},
+  {label: '5 💀', value: 5},
+];
+
 const MainScreen = () => {
   const {
     selectedImage,
@@ -33,12 +41,14 @@ const MainScreen = () => {
     processedImage,
     outputFormat,
     convertQuality,
+    gabigabiLevel,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
     setIsProcessing,
     setOutputFormat,
     setConvertQuality,
+    setGabigabiLevel,
   } = useAppStore();
 
   const handleImageSelect = useCallback(
@@ -62,7 +72,7 @@ const MainScreen = () => {
     }
     setIsProcessing(true);
     try {
-      const result = await resizeImage(selectedImage, resizePercent);
+      const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel);
       setProcessedImage(result.outputUri);
       console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
@@ -179,6 +189,30 @@ const MainScreen = () => {
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
           <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
+        </View>
+
+        {/* ── Gabigabi Level Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>ガビガビレベル</Text>
+          <View style={styles.formatRow}>
+            {GABIGABI_LEVELS.map(item => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.formatButton,
+                  gabigabiLevel === item.value && styles.gabigabiButtonActive,
+                ]}
+                onPress={() => setGabigabiLevel(item.value)}>
+                <Text
+                  style={[
+                    styles.formatButtonText,
+                    gabigabiLevel === item.value && styles.formatButtonTextActive,
+                  ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* ── Format Conversion Section ── */}
@@ -458,6 +492,10 @@ const styles = StyleSheet.create({
   formatButtonActive: {
     borderColor: ACCENT,
     backgroundColor: ACCENT,
+  },
+  gabigabiButtonActive: {
+    borderColor: '#ff9800',
+    backgroundColor: '#ff9800',
   },
   formatButtonText: {
     fontSize: 13,
