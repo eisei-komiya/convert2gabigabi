@@ -42,7 +42,8 @@ export async function processWithFfmpeg(
   const stem = fileName.replace(/\.[^.]+$/, '');
   const ext = fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg';
   const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const outputUri = `${cacheDir}${stem}_gabigabi${ext}`;
+  const suffix = Date.now();
+  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
 
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
