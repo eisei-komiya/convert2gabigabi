@@ -1,82 +1,121 @@
 # convert2gabigabi
 
-画像リサイズアプリケーション - React Native + Rust
+画像を「ガビガビ」に劣化させる Android アプリ — React Native + Expo + Rust
 
-## 🐳 Docker開発環境
+| 機能 | 説明 |
+|---|---|
+| 🖼️ ガビガビ化 | 指定した縮小率とガビガビレベルで画像を低解像度に変換 |
+| 🔄 フォーマット変換 | JPEG / PNG / WebP への変換 + 品質指定 |
+| 📦 Discord圧縮 | ファイルを10MB以下に自動圧縮 |
+| 💾 保存 / 共有 | 変換後の画像をギャラリー保存またはシェア |
 
-### 環境要件
-- Docker
-- Docker Compose
+---
+
+## 📱 セットアップ・ビルド
+
+初回ビルドや Android 実機での開発手順は [`docs/local-dev-android.md`](docs/local-dev-android.md) を参照してください。
 
 ### クイックスタート
 
 ```bash
 # 1. リポジトリクローン
-git clone <repository-url>
-cd convert2gabigabi
+git clone https://github.com/eisei-komiya/convert2gabigabi.git
+cd convert2gabigabi/app
 
-# 2. Docker環境構築・起動
-docker-compose up --build
+# 2. 依存インストール
+npm install
 
-# 3. ブラウザでアクセス
-# Metro server: http://localhost:8081
-# Web版UI: http://localhost:3001
+# 3. Android実機へビルド＆インストール（初回）
+npx expo run:android
+
+# 4. 2回目以降は開発サーバーだけ起動
+npx react-native start
 ```
 
-### 主要コマンド
+> ⚠️ このアプリは `expo-dev-client` を使っているため **Expo Goでは動作しません**。
+> 必ず `npx expo run:android` でカスタム dev client をビルドしてください。
+
+### EAS Build（実機配布用）
 
 ```bash
-# 開発サーバー起動
-docker-compose up
-
-# バックグラウンド起動
-docker-compose up -d
-
-# Rustテスト実行
-docker-compose exec convert2gabigabi bash -c "cd rust_core && cargo test"
-
-# コンテナ内でbash起動
-docker-compose exec convert2gabigabi bash
-
-# 環境クリーンアップ
-docker-compose down --volumes
+cd app
+eas build --profile preview --platform android
 ```
 
-### UIテスト方法
+> CI は手動トリガー (`workflow_dispatch`) のみ。PR や push では自動実行されません。
 
-1. **Webブラウザ**: `http://localhost:3001` でUIテスト
-2. **実機テスト**: Expo Goアプリで`exp://localhost:8081`に接続
-
-## 📱 実機テスト (Expo Go)
-
-1. スマートフォンに [Expo Go](https://expo.dev/client) をインストール
-2. 同じWiFiネットワークに接続
-3. QRコードをスキャンしてアプリ起動
-
-## 🦀 Rust開発
-
-```bash
-# Rust単体テスト
-docker-compose exec convert2gabigabi bash -c "cd rust_core && cargo test"
-
-# Rustライブラリビルド
-docker-compose exec convert2gabigabi bash -c "cd rust_core && cargo build --release"
-```
+---
 
 ## 📁 プロジェクト構成
 
 ```
 convert2gabigabi/
-├── app/                    # React Native アプリ
+├── app/                          # React Native / Expo アプリ
 │   ├── src/
-│   │   ├── components/     # UIコンポーネント
-│   │   ├── screens/        # 画面コンポーネント
-│   │   └── state/          # 状態管理 (Zustand)
+│   │   ├── data/
+│   │   │   ├── ffmpeg/           # FFmpegProcessor（主エンジン）
+│   │   │   └── native/           # RustBridge（フォールバック）
+│   │   ├── domain/               # UseCases
+│   │   │   ├── useResizeImage.ts   # ガビガビ化
+│   │   │   ├── useConvertImage.ts  # フォーマット変換
+│   │   │   └── useDiscordCompress.ts # Discord用圧縮
+│   │   ├── screens/              # 画面
+│   │   │   └── MainScreen.tsx
+│   │   ├── components/           # 再利用コンポーネント
+│   │   │   ├── ImagePicker.tsx
+│   │   │   ├── ResizeSlider.tsx
+│   │   │   └── FileSizeLabel.tsx
+│   │   └── state/                # Zustand ストア
 │   └── package.json
-├── rust_core/              # Rust 画像処理ライブラリ
+├── rust_core/                    # Rust 画像処理ライブラリ（色量子化等）
 │   ├── src/
 │   └── Cargo.toml
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
+├── docs/
+│   ├── local-dev-android.md      # Android開発環境セットアップ
+│   ├── architecture.md           # 設計思想
+│   ├── stack.md                  # 技術スタック詳細
+│   └── ffmpeg_license.md         # FFmpegライセンス情報
+└── GEMINI.md                     # AIエージェント向け開発ルール
 ```
+
+---
+
+## 🏗️ アーキテクチャ
+
+**Clean Architecture** を採用:
+
+```
+UI (screens / components)
+         ↓
+   domain / UseCase       ← 処理エンジン選択ロジック
+    /          \
+data/ffmpeg    data/native
+(FFmpegKit)   (RustBridge)
+```
+
+- **FFmpegKit** が主エンジン。`scale` フィルタ + `-q:v` でリサイズ＆ガビガビ化。
+- **Rust コア** は FFmpeg で対応しにくい色量子化等の補助エンジン（フォールバック）。
+- UseCase 層がエンジン選択を隠蔽し、UI は単純な Promise API を呼ぶだけ。
+
+詳細は [`docs/architecture.md`](docs/architecture.md) 参照。
+
+---
+
+## 🔧 技術スタック
+
+| カテゴリ | 採用技術 |
+|---|---|
+| UI フレームワーク | React Native 0.83 + Expo SDK 55 |
+| 言語 | TypeScript 5.x |
+| 画像処理 | FFmpegKit (`ffmpeg-kit-react-native`) |
+| 補助処理 | Rust (`image` crate) + JNI ブリッジ |
+| 状態管理 | Zustand |
+| ナビゲーション | React Navigation 7 |
+| ファイルシステム | expo-file-system |
+| メディア | expo-image-picker, expo-media-library |
+
+---
+
+## 🤝 開発参加
+
+コードベースの詳細・開発ルールは [`GEMINI.md`](GEMINI.md) を参照してください。
