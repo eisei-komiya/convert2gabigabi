@@ -23,7 +23,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
       return;
     }
     const result = await ExpoImagePicker.launchImageLibraryAsync({
-      mediaTypes: ExpoImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: false,
       quality: 1,
     });
