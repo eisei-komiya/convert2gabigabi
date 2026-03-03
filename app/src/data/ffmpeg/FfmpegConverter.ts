@@ -44,12 +44,13 @@ export async function convertImage(
   // フォーマット別のFFmpegオプションを構築
   let qualityArgs: string;
   switch (outputFormat) {
-    case 'jpeg':
+    case 'jpeg': {
       // FFmpeg の -q:v は 1(最高)〜31(最低)。quality(0-100)を変換。
       // quality=100 → q:v=2, quality=0 → q:v=31
       const qv = Math.round(2 + (100 - quality) * 29 / 100);
       qualityArgs = `-q:v ${qv}`;
       break;
+    }
     case 'png':
       // PNG はロスレス。-compression_level 0-9 (デフォルト6)
       qualityArgs = '-compression_level 6';
