@@ -37,7 +37,8 @@ export async function convertImage(
   };
   const ext = extMap[outputFormat];
   const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const outputUri = `${cacheDir}${stem}_converted${ext}`;
+  const suffix = Date.now();
+  const outputUri = `${cacheDir}${stem}_converted_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
 
   // フォーマット別のFFmpegオプションを構築
