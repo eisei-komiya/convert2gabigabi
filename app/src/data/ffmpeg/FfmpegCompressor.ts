@@ -65,7 +65,7 @@ async function compressImageToTarget(
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'image';
   const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
   const suffix = Date.now();
-  const outputUri = `${cacheDir}${stem}_discord_${suffix}.jpg`;
+  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.jpg`;
   const outputPath = outputUri.replace('file://', '');
 
   let lo = 1;
@@ -164,7 +164,7 @@ async function compressVideoToTarget(
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
   const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
   const suffix = Date.now();
-  const outputUri = `${cacheDir}${stem}_discord_${suffix}.mp4`;
+  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
 
   const cmd = [
