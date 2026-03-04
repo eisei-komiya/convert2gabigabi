@@ -9,7 +9,8 @@ export interface FfmpegProcessResult {
   outputBytes: number;
 }
 
-const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
+const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB (画像用)
+const MAX_VIDEO_INPUT_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (動画用)
 
 /**
  * ガビガビレベルに対応するJPEG品質値（FFmpeg -q:v, 1=最高品質, 31=最低品質）
@@ -117,8 +118,8 @@ export async function processVideoWithFfmpeg(
   if (inputBytes === 0) {
     throw new Error('入力ファイルが空（0バイト）です');
   }
-  if (inputBytes > MAX_INPUT_BYTES) {
-    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
+  if (inputBytes > MAX_VIDEO_INPUT_BYTES) {
+    throw new Error(`入力ファイルが大きすぎます（上限: 2GB）`);
   }
 
   await cleanupCachedTempFiles();
