@@ -1,6 +1,7 @@
 import { Paths } from 'expo-file-system';
 import { FFmpegKit, FFmpegKitConfig, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { generateUniqueFileSuffix, extractErrorFromLogs, extractDurationFromLogs } from './ffmpegUtils';
 
 export interface CompressResult {
   outputUri: string;
@@ -27,12 +28,9 @@ async function getVideoDurationSec(inputPath: string): Promise<number> {
     FFmpegKit.execute(`-i "${inputPath}" -hide_banner`)
       .then(async (session) => {
         const logs = await session.getAllLogsAsString();
-        const match = logs.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
-        if (match) {
-          const h = parseInt(match[1], 10);
-          const m = parseInt(match[2], 10);
-          const s = parseFloat(match[3]);
-          resolve(h * 3600 + m * 60 + s);
+        const duration = extractDurationFromLogs(logs);
+        if (duration !== null) {
+          resolve(duration);
         } else {
           reject(new Error('動画の長さを取得できませんでした'));
         }
@@ -66,7 +64,7 @@ async function compressImageToTarget(
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'image';
   const cacheDirUri = Paths.cache.uri;
   const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
-  const suffix = Date.now();
+  const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.jpg`;
   const outputPath = outputUri.replace('file://', '');
 
@@ -170,7 +168,7 @@ async function compressVideoToTarget(
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
   const cacheDirUri = Paths.cache.uri;
   const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
-  const suffix = Date.now();
+  const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
 
@@ -188,7 +186,7 @@ async function compressVideoToTarget(
   const session = await FFmpegKit.execute(cmd);
   const rc = await session.getReturnCode();
   if (!ReturnCode.isSuccess(rc)) {
-    const logs = await session.getAllLogsAsString();
+    const logs = await extractErrorFromLogs(session);
     throw new Error(`FFmpeg動画圧縮に失敗しました: ${logs}`);
   }
 
