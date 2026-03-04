@@ -1,4 +1,4 @@
-package com.app
+package com.eiseikomiya.convert2gabigabi
 
 import android.app.Application
 import com.eiseikomiya.convert2gabigabi.BuildConfig
