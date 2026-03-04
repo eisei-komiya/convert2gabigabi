@@ -1,113 +1,42 @@
-# FFmpeg ライセンス調査レポート
+# FFmpeg ライセンス
 
-## 概要
+## 本プロジェクトのライセンス
 
-本ドキュメントでは、convert2gabigabi アプリに FFmpeg を組み込む際の  
-ライセンス上の注意点・商用利用可否をまとめる。
+本プロジェクトは **GPL v3** ライセンスで公開されています。
 
----
+## FFmpeg の利用
 
-## FFmpeg のライセンス構成
+本アプリは [FFmpegKit](https://github.com/arthenica/ffmpeg-kit) の
+コミュニティフォーク（[@wokcito/ffmpeg-kit-react-native](https://www.npmjs.com/package/@wokcito/ffmpeg-kit-react-native)）を使用しています。
 
-FFmpeg 自体は **単一のライセンス** ではなく、  
-ビルド時に有効化するコンポーネントによって適用ライセンスが変わる。
+### 使用パッケージ
 
-| ビルド構成 | 適用ライセンス | 商用利用 | ソース公開義務 |
-|---|---|---|---|
-| デフォルト（LGPL コンポーネントのみ） | **LGPL v2.1+** | ✅ 可 | FFmpeg 改変部分のみ公開が必要 |
-| `--enable-gpl` オプション付き | **GPL v2+** | ✅ 可（ただし条件あり） | アプリ全体のソース公開が必要 |
-| `--enable-nonfree` オプション付き | 非フリー（再配布禁止） | ❌ 不可 | 再配布そのものが禁止 |
+- `io.github.jamaismagic.ffmpeg:ffmpeg-kit-main-16kb:6.1.4`
+- main パッケージ（GPLコーデック含む）
 
----
+### 使用コーデック
 
-## 商用利用の可否
+| コーデック | ライセンス | 用途 |
+|---|---|---|
+| libx264 | GPL v2+ | H.264 動画エンコード（MP4/AVI/MOV/MKV） |
+| mpeg2video | LGPL | MPG 動画エンコード |
+| libvpx-vp9 | BSD | WebM 動画エンコード |
+| libvorbis | BSD | WebM 音声エンコード |
+| aac (FFmpeg内蔵) | LGPL | MP4/MOV 音声エンコード |
+| mp3 (FFmpeg内蔵) | LGPL | AVI 音声エンコード |
+| mp2 (FFmpeg内蔵) | LGPL | MPG 音声エンコード |
 
-### ✅ 無料アプリ・有料アプリ ともに利用可能（条件付き）
+### GPL 採用の理由
 
-FFmpeg を **LGPL ビルド** で使用する場合：
+`libx264` は H.264 エンコードの業界標準であり、フォーマット変換の品質に直結します。
+本アプリはフォーマット変換をメイン機能の一つとして提供するため、
+品質を妥協せず GPL v3 を採用しソースコードを公開する方針としました。
 
-- 無料アプリ・有料アプリいずれでも **商用利用は許可されている**
-- ただし以下の条件を守る必要がある
+## ソースコード
 
-#### LGPL v2.1 遵守要件（主要事項）
-
-1. **リンク方式（動的 or 静的）と LGPL 遵守**  
-   LGPL の核心は「ユーザーが FFmpeg 部分だけを差し替えられること」を保証する点にある。  
-   これを満たす方法は 2 通りある：
-
-   | 方式 | オフライン動作 | 実装コスト | LGPL 遵守方法 |
-   |---|---|---|---|
-   | **動的リンク**（.so / .dylib） | ✅ 可能（端末内に .so を同梱） | 低 | .so を APK/IPA に同梱するだけで OK |
-   | **静的リンク**（.a に埋め込み） | ✅ 可能 | やや高 | アプリの **オブジェクトファイル (.o)** をユーザーに提供する必要あり（後述） |
-
-   > **完全オフラインでも動的リンクは使えます。**  
-   > 「動的」とはネットワーク通信ではなく「実行時に .so ファイルをロードする」意味。  
-   > .so を APK 内（`lib/arm64-v8a/` など）に同梱すれば、ネットワーク不要で完全オフライン動作します。
-
-2. **「オブジェクトファイルの提供」とは？**  
-   静的リンクを選んだ場合、LGPL は  
-   「ユーザーが FFmpeg を新バージョンに差し替えてアプリを再ビルドできるように、  
-   アプリ側のコンパイル済みオブジェクトファイル (.o) を提供すること」  
-   を求めている（LGPL v2.1 §6(a)）。  
-   
-   具体的には、アプリの `.o` ファイルを GitHub リリースページ等で公開し、  
-   「これと差し替えた FFmpeg .a を組み合わせてビルドする手順」を示せば要件を満たす。  
-   ただしこの対応はコストが高いため、**動的リンクの方が現実的**。
-
-3. **著作権表示・ライセンス文の同梱**  
-   アプリの About 画面や同梱ファイルに FFmpeg の著作権表示と  
-   LGPL ライセンス全文（またはリンク）を記載すること。
-
-4. **FFmpeg 自体の改変をした場合はソース公開が必要**  
-   FFmpeg のソースを改変せず利用するだけであればソース公開は不要。
+- GitHub: https://github.com/eisei-komiya/convert2gabigabi
+- ライセンス: GPL v3（リポジトリルートの `LICENSE` 参照）
 
 ---
 
-## GPL コンポーネントを使う場合
-
-`--enable-gpl` でビルドした FFmpeg（例: libx264, libx265 等を有効化）を  
-組み込んだ場合は GPL v2 が適用され、**アプリ全体のソースコード公開**が必要になる。  
-商用有料アプリでソース非公開を維持したい場合は **GPL コンポーネントを使わない**こと。
-
----
-
-## 本プロジェクトへの推奨方針
-
-| 項目 | 推奨 |
-|---|---|
-| ビルド構成 | LGPL ビルド（`--enable-gpl` なし） |
-| リンク方式 | **動的リンク（.so / .dylib）を APK/IPA に同梱** |
-| オフライン動作 | **完全オフライン可能**（.so を同梱するだけ） |
-| 商用有料化 | **可能**（LGPL 条件遵守の上で） |
-| ソース公開 | FFmpeg 未改変の場合は不要 |
-| 著作権表示 | About 画面等に FFmpeg クレジットを必ず記載 |
-
----
-
-## Android 向け実装メモ
-
-- [FFmpeg-Android-Maker](https://github.com/Javernaut/FFmpeg-Android-Maker) や  
-  [mobile-ffmpeg](https://github.com/arthenica/ffmpeg-kit) (FFmpegKit) を使うと  
-  LGPL ビルド済みの .so をそのまま取得可能。
-- **FFmpegKit** (arthenica) は LGPL ビルドを公式提供しており、  
-  React Native 向けパッケージ `ffmpeg-kit-react-native` もある。
-
----
-
-## iOS 向け実装メモ
-
-- FFmpegKit は iOS 向けの xcframework も LGPL ビルドで提供している。
-- App Store への提出は FFmpeg 組み込みでも行われている実績多数あり（LGPL 遵守前提）。
-
----
-
-## 参考リンク
-
-- [FFmpeg License and Legal Considerations（公式）](https://ffmpeg.org/legal.html)
-- [FFmpegKit（arthenica）](https://github.com/arthenica/ffmpeg-kit)
-- [ffmpeg-kit-react-native](https://github.com/arthenica/ffmpeg-kit/tree/main/react-native)
-- [LGPL v2.1 全文](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
-
----
-
-最終更新: 2026-02-25（オフライン動作・静的リンク説明を追記）
+最終更新: 2026-03-05
