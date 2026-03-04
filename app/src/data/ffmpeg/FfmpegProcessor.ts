@@ -18,8 +18,42 @@ const GABIGABI_QUALITY: Record<number, number> = {
 };
 
 /**
+ * FFmpegのログから実際のエラーメッセージを抽出する。
+ * バージョンバナーや設定情報を除き、エラー行のみ返す。
+ */
+function extractErrorFromLogs(logs: string): string {
+  const errorLines = logs
+    .split('\n')
+    .filter(line => {
+      const lower = line.toLowerCase();
+      return (
+        lower.includes('error') ||
+        lower.includes('invalid') ||
+        lower.includes('no such file') ||
+        lower.includes('not found') ||
+        lower.includes('failed') ||
+        lower.includes('unable') ||
+        lower.includes('cannot') ||
+        lower.includes('unrecognized') ||
+        lower.includes('unknown')
+      );
+    })
+    .filter(line => !line.startsWith('ffmpeg version') && !line.startsWith('  '))
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  if (errorLines.length > 0) {
+    return errorLines.slice(0, 3).join(' | ');
+  }
+
+  const trimmed = logs.trim();
+  return trimmed.length > 200 ? '...' + trimmed.slice(-200) : trimmed;
+}
+
+/**
  * FFmpegを使って画像をガビガビ化する。
  * スケール縮小 + 低品質JPEG圧縮でガビガビ効果を出す。
+ * 出力は常にJPEG（PNG入力でも）— JPEGのみ -q:v で品質制御が有効なため。
  *
  * @param inputUri   入力画像のファイルURI
  * @param scalePct   縮小率（1〜100 %）
@@ -40,10 +74,10 @@ export async function processWithFfmpeg(
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
   const stem = fileName.replace(/\.[^.]+$/, '');
-  const ext = fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg';
   const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const suffix = Date.now();
-  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
+  const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  // ガビガビ化は常にJPEG出力（PNG入力でも）。JPEGのみ -q:v で品質劣化が有効。
+  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.jpg`;
   const outputPath = outputUri.replace('file://', '');
 
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
@@ -63,7 +97,8 @@ export async function processWithFfmpeg(
 
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await session.getAllLogsAsString();
-    throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+    const errorSummary = extractErrorFromLogs(logs);
+    throw new Error(`FFmpeg処理に失敗しました: ${errorSummary}`);
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });

@@ -25,7 +25,7 @@ import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertIma
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
   {label: 'PNG', value: 'png'},
-  {label: 'WebP', value: 'webp'},
+  {label: 'WebP (非対応)', value: 'webp'},
 ];
 
 const GABIGABI_LEVELS: {label: string; value: number}[] = [
