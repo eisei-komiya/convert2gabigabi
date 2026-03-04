@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -218,6 +218,39 @@ const MainScreen = () => {
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
 
+  // #97: file info
+  const [fileInfo, setFileInfo] = useState<{name: string; size: string; width: number; height: number} | null>(null);
+
+  useEffect(() => {
+    if (!selectedImage) {
+      setFileInfo(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const info = await FileSystem.getInfoAsync(selectedImage, {size: true});
+        const bytes = info.exists ? (info as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
+        const sizeStr = bytes >= 1024 * 1024
+          ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+          : `${(bytes / 1024).toFixed(1)} KB`;
+        const name = selectedImage.split('/').pop() ?? '';
+        Image.getSize(
+          selectedImage,
+          (width, height) => {
+            if (!cancelled) setFileInfo({name, size: sizeStr, width, height});
+          },
+          () => {
+            if (!cancelled) setFileInfo({name, size: sizeStr, width: 0, height: 0});
+          },
+        );
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedImage]);
+
   const showError = useCallback((title: string, message: string) => {
     setErrorModal({visible: true, title, message});
   }, []);
@@ -408,7 +441,7 @@ const MainScreen = () => {
           <PreviewCard
             label="Before"
             uri={selectedImage}
-            placeholder="タップして画像を選択"
+            placeholder={selectedImage ? '' : 'タップして画像を選択'}
             onPickerPress={undefined}
             onImagePress={handleImagePress}
           />
@@ -430,6 +463,19 @@ const MainScreen = () => {
           selectedImage={selectedImage || undefined}
         />
 
+        {/* ── File Info (#97) ── */}
+        {selectedImage && fileInfo && (
+          <View style={styles.fileInfoCard}>
+            <Text style={styles.fileInfoTitle}>📄 ファイル情報</Text>
+            <Text style={styles.fileInfoText} numberOfLines={1} ellipsizeMode="middle">
+              {fileInfo.name}
+            </Text>
+            <Text style={styles.fileInfoText}>
+              サイズ: {fileInfo.size}{fileInfo.width > 0 ? `　　${fileInfo.width} × ${fileInfo.height} px` : ''}
+            </Text>
+          </View>
+        )}
+
         {/* ── File Size ── */}
         {selectedImage && (
           <View style={styles.sizeRow}>
@@ -442,6 +488,13 @@ const MainScreen = () => {
             )}
           </View>
         )}
+
+        {/* ── Section: ガビガビ化 (#98) ── */}
+        <View style={styles.axisHeader}>
+          <View style={styles.axisHeaderLine} />
+          <Text style={styles.axisHeaderText}>⚡ ガビガビ化</Text>
+          <View style={styles.axisHeaderLine} />
+        </View>
 
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
@@ -470,6 +523,13 @@ const MainScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* ── Section: フォーマット変換 (#98) ── */}
+        <View style={styles.axisHeader}>
+          <View style={styles.axisHeaderLine} />
+          <Text style={[styles.axisHeaderText, styles.axisHeaderTextConvert]}>🔄 フォーマット変換</Text>
+          <View style={styles.axisHeaderLine} />
         </View>
 
         {/* ── Format Conversion Section ── */}
@@ -967,6 +1027,52 @@ const styles = StyleSheet.create({
 
   spacer: {
     height: 20,
+  },
+
+  /* file info (#97) */
+  fileInfoCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+    marginBottom: 12,
+    gap: 4,
+  },
+  fileInfoTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  fileInfoText: {
+    fontSize: 13,
+    color: TEXT_PRIMARY,
+  },
+
+  /* axis section headers (#98) */
+  axisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+    gap: 8,
+  },
+  axisHeaderLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: BORDER,
+  },
+  axisHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: ACCENT,
+    letterSpacing: 0.5,
+  },
+  axisHeaderTextConvert: {
+    color: ACCENT2,
   },
 });
 
