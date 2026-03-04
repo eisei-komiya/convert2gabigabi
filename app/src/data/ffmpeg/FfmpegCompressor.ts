@@ -70,7 +70,6 @@ async function compressImageToTarget(
 
   let lo = 1;
   let hi = 31; // FFmpeg -q:v range: 1 (best) to 31 (worst)
-  let bestQv = hi;
   let bestBytes = 0;
 
   // バイナリサーチで targetBytes 以下に収まる最高品質を探す
@@ -93,7 +92,6 @@ async function compressImageToTarget(
     const outBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
 
     if (outBytes <= targetBytes) {
-      bestQv = mid;
       bestBytes = outBytes;
       hi = mid - 1; // より高品質（低い qv）を試す
     } else {
