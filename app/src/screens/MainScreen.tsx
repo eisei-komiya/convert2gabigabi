@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -10,6 +10,10 @@ import {
   Image,
   ScrollView,
   StatusBar,
+  Modal,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
@@ -22,6 +26,7 @@ import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
+import {FFmpegKit} from 'ffmpeg-kit-react-native';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
@@ -36,6 +41,152 @@ const GABIGABI_LEVELS: {label: string; value: number}[] = [
   {label: '4 極重', value: 4},
   {label: '5 💀', value: 5},
 ];
+
+const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
+
+/* ── Fullscreen image modal with pinch-to-zoom ── */
+interface ImageModalProps {
+  uri: string | null;
+  visible: boolean;
+  onClose: () => void;
+}
+
+const ImageModal: React.FC<ImageModalProps> = ({uri, visible, onClose}) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const lastScale = useRef(1);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastTranslateX = useRef(0);
+  const lastTranslateY = useRef(0);
+
+  const reset = useCallback(() => {
+    scale.setValue(1);
+    lastScale.current = 1;
+    translateX.setValue(0);
+    translateY.setValue(0);
+    lastTranslateX.current = 0;
+    lastTranslateY.current = 0;
+  }, [scale, translateX, translateY]);
+
+  const handleClose = useCallback(() => {
+    reset();
+    onClose();
+  }, [reset, onClose]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        translateX.setOffset(lastTranslateX.current);
+        translateY.setOffset(lastTranslateY.current);
+        translateX.setValue(0);
+        translateY.setValue(0);
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          // Pinch-to-zoom
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if ((panResponder as any)._initialDistance == null) {
+            (panResponder as any)._initialDistance = distance;
+          }
+          const newScale = Math.max(
+            0.5,
+            Math.min(5, lastScale.current * (distance / (panResponder as any)._initialDistance)),
+          );
+          scale.setValue(newScale);
+        } else {
+          translateX.setValue(gestureState.dx);
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        (panResponder as any)._initialDistance = null;
+        lastScale.current = (scale as any)._value;
+        translateX.flattenOffset();
+        translateY.flattenOffset();
+        lastTranslateX.current = (translateX as any)._value;
+        lastTranslateY.current = (translateY as any)._value;
+      },
+    }),
+  ).current;
+
+  if (!uri) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <View style={modalStyles.overlay}>
+        <TouchableOpacity style={modalStyles.closeBtn} onPress={handleClose}>
+          <Text style={modalStyles.closeBtnText}>✕</Text>
+        </TouchableOpacity>
+        <Animated.Image
+          source={{uri}}
+          style={[
+            modalStyles.image,
+            {
+              transform: [
+                {scale},
+                {translateX},
+                {translateY},
+              ],
+            },
+          ]}
+          resizeMode="contain"
+          {...panResponder.panHandlers}
+        />
+        <TouchableOpacity style={modalStyles.resetBtn} onPress={reset}>
+          <Text style={modalStyles.resetBtnText}>リセット</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+};
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.8,
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  resetBtn: {
+    position: 'absolute',
+    bottom: 48,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  resetBtnText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+});
 
 const MainScreen = () => {
   const {
@@ -63,6 +214,10 @@ const MainScreen = () => {
 
   const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'discord' | null>(null);
 
+  // #77: fullscreen modal state
+  const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+
   const showError = useCallback((title: string, message: string) => {
     setErrorModal({visible: true, title, message});
   }, []);
@@ -85,6 +240,22 @@ const MainScreen = () => {
     },
     [setResizePercent],
   );
+
+  // #77: open fullscreen
+  const handleImagePress = useCallback((uri: string | null) => {
+    if (!uri) return;
+    setFullscreenUri(uri);
+    setFullscreenVisible(true);
+  }, []);
+
+  // #34: cancel FFmpeg
+  const handleCancel = useCallback(async () => {
+    try {
+      await FFmpegKit.cancel();
+    } catch (err) {
+      console.warn('Cancel failed:', err);
+    }
+  }, []);
 
   const handleProcess = async () => {
     if (!selectedImage) {
@@ -152,6 +323,7 @@ const MainScreen = () => {
     }
   };
 
+  // #78: fix share bug — copy to cache before sharing to avoid permission error
   const handleShare = async () => {
     if (!processedImage) {
       return;
@@ -162,7 +334,11 @@ const MainScreen = () => {
         Alert.alert('共有不可', 'このデバイスでは共有機能が利用できません');
         return;
       }
-      await Sharing.shareAsync(processedImage);
+      // Copy to cache directory to avoid expo-sharing permission issues on Android
+      const filename = processedImage.split('/').pop() ?? 'shared_image.jpg';
+      const cacheUri = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.copyAsync({from: processedImage, to: cacheUri});
+      await Sharing.shareAsync(cacheUri);
     } catch (err) {
       showError('エラー', `共有に失敗しました: ${String(err)}`);
     }
@@ -209,6 +385,13 @@ const MainScreen = () => {
         onClose={hideError}
       />
 
+      {/* ── Fullscreen Image Modal (#77) ── */}
+      <ImageModal
+        uri={fullscreenUri}
+        visible={fullscreenVisible}
+        onClose={() => setFullscreenVisible(false)}
+      />
+
       {/* ── Header ── */}
       <View style={styles.header}>
         <Text style={styles.appName}>convert2gabigabi</Text>
@@ -227,6 +410,7 @@ const MainScreen = () => {
             uri={selectedImage}
             placeholder="タップして画像を選択"
             onPickerPress={undefined}
+            onImagePress={handleImagePress}
           />
           <View style={styles.arrowContainer}>
             <Text style={styles.arrow}>›</Text>
@@ -236,6 +420,7 @@ const MainScreen = () => {
             uri={processedImage}
             placeholder={selectedImage ? '変換後' : '—'}
             onPickerPress={undefined}
+            onImagePress={handleImagePress}
           />
         </View>
 
@@ -345,7 +530,7 @@ const MainScreen = () => {
             onPress={handleProcess}
             disabled={!selectedImage || isProcessing}
             activeOpacity={0.8}>
-            {isProcessing ? (
+            {isProcessing && processingAction === 'gabigabi' ? (
               <View style={styles.processingRow}>
                 <ActivityIndicator color="#fff" size="small" />
                 <Text style={styles.buttonText}> 処理中...</Text>
@@ -387,6 +572,16 @@ const MainScreen = () => {
           )}
         </TouchableOpacity>
 
+        {/* ── Cancel Button (#34) — shown during processing ── */}
+        {isProcessing && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={handleCancel}
+            activeOpacity={0.8}>
+            <Text style={styles.cancelButtonText}>⛔ キャンセル</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Save / Share Buttons ── */}
         {processedImage && (
           <View style={styles.buttonRow}>
@@ -427,13 +622,19 @@ interface PreviewCardProps {
   uri: string | null;
   placeholder: string;
   onPickerPress?: () => void;
+  onImagePress?: (uri: string | null) => void;
 }
 
-const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, placeholder}) => (
+const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, placeholder, onImagePress}) => (
   <View style={styles.previewCard}>
     <Text style={styles.previewLabel}>{label}</Text>
     {uri ? (
-      <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
+      <TouchableOpacity onPress={() => onImagePress?.(uri)} activeOpacity={0.85}>
+        <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
+        <View style={styles.previewTapHint}>
+          <Text style={styles.previewTapHintText}>🔍 タップで拡大</Text>
+        </View>
+      </TouchableOpacity>
     ) : (
       <View style={styles.previewEmpty}>
         <Text style={styles.previewEmptyText}>{placeholder}</Text>
@@ -514,6 +715,15 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 150,
+  },
+  previewTapHint: {
+    position: 'absolute',
+    bottom: 4,
+    right: 6,
+  },
+  previewTapHintText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
   },
   previewEmpty: {
     height: 150,
@@ -697,6 +907,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+
+  /* cancel button (#34) */
+  cancelButton: {
+    backgroundColor: '#555',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#777',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   /* save / share buttons */
