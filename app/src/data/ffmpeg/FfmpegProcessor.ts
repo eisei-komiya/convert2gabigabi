@@ -61,6 +61,96 @@ async function cleanupCachedTempFiles(): Promise<void> {
  * @param scalePct   縮小率（1〜100 %）
  * @param gabigabiLevel  ガビガビレベル（1〜5、省略時 2）
  */
+
+/**
+ * ガビガビレベルに対応するH.264 CRF値（23=標準品質, 51=最低品質）
+ */
+const GABIGABI_CRF: Record<number, number> = {
+  0: 23, // ほぼ劣化なし
+  1: 35,
+  2: 40,
+  3: 45,
+  4: 48,
+  5: 51, // 最低品質
+};
+
+/**
+ * FFmpegを使って動画をガビガビ化する。
+ * スケール縮小 + 低品質H.264エンコードでガビガビ効果を出す。
+ *
+ * @param inputUri       入力動画のファイルURI
+ * @param scalePct       縮小率（1〜100 %）
+ * @param gabigabiLevel  ガビガビレベル（0〜5、省略時 2）
+ */
+export async function processVideoWithFfmpeg(
+  inputUri: string,
+  scalePct: number,
+  gabigabiLevel: number = 2,
+): Promise<FfmpegProcessResult> {
+  if (scalePct <= 0 || scalePct > 100) {
+    throw new Error('scalePct must be within (0, 100]');
+  }
+  if (gabigabiLevel < 0 || gabigabiLevel > 5) {
+    throw new Error('gabigabiLevel must be 0-5');
+  }
+
+  const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
+  if (!inputInfo.exists) {
+    throw new Error('入力ファイルが存在しません');
+  }
+  const inputBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  if (inputBytes === 0) {
+    throw new Error('入力ファイルが空（0バイト）です');
+  }
+  if (inputBytes > MAX_INPUT_BYTES) {
+    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
+  }
+
+  await cleanupCachedTempFiles();
+
+  const inputPath = inputUri.replace('file://', '');
+  const fileName = inputPath.split('/').pop() ?? 'video.mp4';
+  const stem = fileName.replace(/\.[^.]+$/, '');
+  const cacheDir = getCacheDir();
+  const suffix = generateUniqueFileSuffix();
+  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.mp4`;
+  const outputPath = outputUri.replace('file://', '');
+
+  console.log('[FFmpeg] video outputPath:', outputPath);
+
+  const crf = GABIGABI_CRF[gabigabiLevel] ?? 40;
+  const scale = scalePct / 100;
+
+  // -vf scale でリサイズ、-crf で品質を制御してガビガビ化
+  // scale の値を偶数に丸める（H.264 の要件）
+  const cmd = [
+    '-y',
+    '-i', `"${inputPath}"`,
+    '-vf', `"scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2"`,
+    '-c:v', 'libx264',
+    '-crf', String(crf),
+    '-c:a', 'copy',
+    `"${outputPath}"`,
+  ].join(' ');
+
+  const session = await FFmpegKit.execute(cmd);
+  const rc = await session.getReturnCode();
+
+  if (!ReturnCode.isSuccess(rc)) {
+    const logs = await extractErrorFromLogs(session);
+    throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+  }
+
+  const info = await FileSystem.getInfoAsync(outputUri, { size: true });
+  if (!info.exists) {
+    throw new Error('FFmpeg出力ファイルが見つかりません');
+  }
+  return {
+    outputUri,
+    outputBytes: (info as FileSystem.FileInfo & { size: number }).size ?? 0,
+  };
+}
+
 export async function processWithFfmpeg(
   inputUri: string,
   scalePct: number,

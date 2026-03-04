@@ -26,6 +26,7 @@ import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
 import {FFmpegKit} from 'ffmpeg-kit-react-native';
+import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
@@ -532,12 +533,6 @@ const MainScreen = () => {
 
         {/* ── Settings ── */}
 
-        {/* #80: video not supported notice */}
-        {selectedMediaType === 'video' && (
-          <View style={styles.videoNoticeCard}>
-            <Text style={styles.videoNoticeText}>🎬 動画のガビガビ化は今後対応予定です</Text>
-          </View>
-        )}
 
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
@@ -645,9 +640,9 @@ const MainScreen = () => {
 
         {/* Main action buttons */}
         <TouchableOpacity
-          style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
           onPress={handleProcess}
-          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          disabled={!selectedImage || isProcessing}
           activeOpacity={0.8}>
           {isProcessing && processingAction === 'gabigabi' ? (
             <View style={styles.processingRow}>
@@ -660,9 +655,9 @@ const MainScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.discordButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
           onPress={handleDiscordCompress}
-          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          disabled={!selectedImage || isProcessing}
           activeOpacity={0.8}>
           {processingAction === 'discord' ? (
             <View style={styles.processingRow}>
