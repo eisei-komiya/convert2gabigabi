@@ -13,7 +13,7 @@ const TEXT_SECONDARY = '#888';
 const BORDER = '#2a2a2a';
 const INPUT_BG = '#111';
 
-const PRESETS = [25, 50, 75];
+const PRESETS = [25, 50, 75, 100];
 
 const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange}) => {
   const handleTextChange = (text: string) => {
