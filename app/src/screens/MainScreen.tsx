@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
-import * as Sharing from 'expo-sharing';
+import Share from 'react-native-share';
 import * as FileSystem from 'expo-file-system/legacy';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
@@ -374,20 +374,18 @@ const MainScreen = () => {
       return;
     }
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('共有不可', 'このデバイスでは共有機能が利用できません');
+      const filePath = processedImage.replace('file://', '');
+      const ext = filePath.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'mp4' ? 'video/mp4' : 'image/jpeg';
+      await Share.open({
+        url: `file://${filePath}`,
+        type: mimeType,
+      });
+    } catch (err: any) {
+      // User cancelled share dialog
+      if (err?.message?.includes('User did not share') || err?.message?.includes('cancel')) {
         return;
       }
-      // Copy to cache directory to avoid expo-sharing permission issues on Android
-      // If already in cache, share directly to avoid "same source and destination" error
-      const filename = processedImage.split('/').pop() ?? 'shared_image.jpg';
-      const cacheUri = `${FileSystem.cacheDirectory}${filename}`;
-      if (processedImage !== cacheUri) {
-        await FileSystem.copyAsync({from: processedImage, to: cacheUri});
-      }
-      await Sharing.shareAsync(cacheUri);
-    } catch (err) {
       showError('エラー', `共有に失敗しました: ${String(err)}`);
     }
   };
