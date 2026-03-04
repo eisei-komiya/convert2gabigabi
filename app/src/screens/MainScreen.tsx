@@ -519,6 +519,7 @@ const MainScreen = () => {
             />
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
+                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + outputFormat) : '—'}</Text>
                 <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
                 <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
                 {outputFormat !== 'png' && (
