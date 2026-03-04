@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -37,6 +37,13 @@ const GABIGABI_LEVELS: {label: string; value: number}[] = [
   {label: '5 💀', value: 5},
 ];
 
+interface FileInfo {
+  name: string;
+  sizeStr: string;
+  width?: number;
+  height?: number;
+}
+
 const MainScreen = () => {
   const {
     selectedImage,
@@ -62,6 +69,28 @@ const MainScreen = () => {
   });
 
   const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'discord' | null>(null);
+  const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
+
+  // Load file info when image is selected (#97)
+  useEffect(() => {
+    if (!selectedImage) {
+      setFileInfo(null);
+      return;
+    }
+    (async () => {
+      try {
+        const info = await FileSystem.getInfoAsync(selectedImage, {size: true});
+        const sizeBytes = info.exists ? (info as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
+        const name = selectedImage.split('/').pop() ?? '';
+        setFileInfo({
+          name,
+          sizeStr: formatBytes(sizeBytes),
+        });
+      } catch {
+        setFileInfo(null);
+      }
+    })();
+  }, [selectedImage]);
 
   const showError = useCallback((title: string, message: string) => {
     setErrorModal({visible: true, title, message});
@@ -222,11 +251,11 @@ const MainScreen = () => {
 
         {/* ── Before / After Preview ── */}
         <View style={styles.previewRow}>
+          {/* Before: placeholder text removed (#96) */}
           <PreviewCard
             label="Before"
             uri={selectedImage}
-            placeholder="タップして画像を選択"
-            onPickerPress={undefined}
+            placeholder=""
           />
           <View style={styles.arrowContainer}>
             <Text style={styles.arrow}>›</Text>
@@ -235,7 +264,6 @@ const MainScreen = () => {
             label="After"
             uri={processedImage}
             placeholder={selectedImage ? '変換後' : '—'}
-            onPickerPress={undefined}
           />
         </View>
 
@@ -244,6 +272,19 @@ const MainScreen = () => {
           onImageSelect={handleImageSelect}
           selectedImage={selectedImage || undefined}
         />
+
+        {/* ── File Info (#97) ── */}
+        {selectedImage && fileInfo && (
+          <View style={styles.fileInfoCard}>
+            <Text style={styles.fileInfoTitle}>📄 ファイル情報</Text>
+            <Text style={styles.fileInfoText} numberOfLines={1}>
+              名前: {fileInfo.name}
+            </Text>
+            <Text style={styles.fileInfoText}>
+              サイズ: {fileInfo.sizeStr}
+            </Text>
+          </View>
+        )}
 
         {/* ── File Size ── */}
         {selectedImage && (
@@ -258,103 +299,122 @@ const MainScreen = () => {
           </View>
         )}
 
-        {/* ── Resize Slider ── */}
-        <View style={styles.sliderCard}>
-          <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
-        </View>
-
-        {/* ── Gabigabi Level Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>ガビガビレベル</Text>
-          <View style={styles.formatRow}>
-            {GABIGABI_LEVELS.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                style={[
-                  styles.formatButton,
-                  gabigabiLevel === item.value && styles.gabigabiButtonActive,
-                ]}
-                onPress={() => setGabigabiLevel(item.value)}>
-                <Text
-                  style={[
-                    styles.formatButtonText,
-                    gabigabiLevel === item.value && styles.formatButtonTextActive,
-                  ]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Format Conversion Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>出力フォーマット</Text>
-          <View style={styles.formatRow}>
-            {FORMAT_OPTIONS.map(opt => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.formatButton,
-                  outputFormat === opt.value && styles.formatButtonActive,
-                ]}
-                onPress={() => setOutputFormat(opt.value)}>
-                <Text
-                  style={[
-                    styles.formatButtonText,
-                    outputFormat === opt.value && styles.formatButtonTextActive,
-                  ]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* ════════════════════════════════════════
+            Section: ガビガビ化 (#98)
+        ════════════════════════════════════════ */}
+        <View style={styles.groupSection}>
+          <View style={styles.groupHeader}>
+            <Text style={styles.groupHeaderText}>⚡ ガビガビ化</Text>
+            <Text style={styles.groupHeaderSub}>縮小率・レベルを調整して画像を劣化させる</Text>
           </View>
 
-          {outputFormat !== 'png' && (
-            <View style={styles.qualityRow}>
-              <Text style={styles.qualityLabel}>
-                品質: {convertQuality}%
-              </Text>
-              <View style={styles.qualityButtons}>
-                {[60, 75, 85, 95].map(q => (
-                  <TouchableOpacity
-                    key={q}
+          {/* ── Resize Slider ── */}
+          <View style={styles.sliderCard}>
+            <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
+          </View>
+
+          {/* ── Gabigabi Level ── */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>ガビガビレベル</Text>
+            <View style={styles.formatRow}>
+              {GABIGABI_LEVELS.map(item => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.formatButton,
+                    gabigabiLevel === item.value && styles.gabigabiButtonActive,
+                  ]}
+                  onPress={() => setGabigabiLevel(item.value)}>
+                  <Text
                     style={[
-                      styles.qualityPreset,
-                      convertQuality === q && styles.qualityPresetActive,
-                    ]}
-                    onPress={() => setConvertQuality(q)}>
-                    <Text
-                      style={[
-                        styles.qualityPresetText,
-                        convertQuality === q && styles.qualityPresetTextActive,
-                      ]}>
-                      {q}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      styles.formatButtonText,
+                      gabigabiLevel === item.value && styles.formatButtonTextActive,
+                    ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
-        </View>
+          </View>
 
-        {/* ── Action Buttons ── */}
-        <View style={styles.buttonRow}>
+          {/* ── Gabigabi Action Button ── */}
           <TouchableOpacity
             style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
             onPress={handleProcess}
             disabled={!selectedImage || isProcessing}
             activeOpacity={0.8}>
-            {isProcessing ? (
+            {processingAction === 'gabigabi' ? (
               <View style={styles.processingRow}>
                 <ActivityIndicator color="#fff" size="small" />
                 <Text style={styles.buttonText}> 処理中...</Text>
               </View>
             ) : (
-              <Text style={styles.buttonText}>⚡ ガビガビ化</Text>
+              <Text style={styles.buttonText}>⚡ ガビガビ化する</Text>
             )}
           </TouchableOpacity>
+        </View>
 
+        {/* ════════════════════════════════════════
+            Section: フォーマット変換 (#98)
+        ════════════════════════════════════════ */}
+        <View style={styles.groupSection}>
+          <View style={styles.groupHeader}>
+            <Text style={styles.groupHeaderText}>🔄 フォーマット変換</Text>
+            <Text style={styles.groupHeaderSub}>出力形式・品質を指定して変換する</Text>
+          </View>
+
+          {/* ── Format Selection ── */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>出力フォーマット</Text>
+            <View style={styles.formatRow}>
+              {FORMAT_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.formatButton,
+                    outputFormat === opt.value && styles.formatButtonActive,
+                  ]}
+                  onPress={() => setOutputFormat(opt.value)}>
+                  <Text
+                    style={[
+                      styles.formatButtonText,
+                      outputFormat === opt.value && styles.formatButtonTextActive,
+                    ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {outputFormat !== 'png' && (
+              <View style={styles.qualityRow}>
+                <Text style={styles.qualityLabel}>
+                  品質: {convertQuality}%
+                </Text>
+                <View style={styles.qualityButtons}>
+                  {[60, 75, 85, 95].map(q => (
+                    <TouchableOpacity
+                      key={q}
+                      style={[
+                        styles.qualityPreset,
+                        convertQuality === q && styles.qualityPresetActive,
+                      ]}
+                      onPress={() => setConvertQuality(q)}>
+                      <Text
+                        style={[
+                          styles.qualityPresetText,
+                          convertQuality === q && styles.qualityPresetTextActive,
+                        ]}>
+                        {q}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* ── Convert Action Button ── */}
           <TouchableOpacity
             style={[styles.convertButton, (!selectedImage || isProcessing) && styles.disabledButton]}
             onPress={handleConvert}
@@ -366,7 +426,7 @@ const MainScreen = () => {
                 <Text style={styles.buttonText}> 処理中...</Text>
               </View>
             ) : (
-              <Text style={styles.buttonText}>フォーマット変換</Text>
+              <Text style={styles.buttonText}>🔄 フォーマット変換する</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -426,7 +486,6 @@ interface PreviewCardProps {
   label: string;
   uri: string | null;
   placeholder: string;
-  onPickerPress?: () => void;
 }
 
 const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, placeholder}) => (
@@ -436,7 +495,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, placeholder}) => (
       <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
     ) : (
       <View style={styles.previewEmpty}>
-        <Text style={styles.previewEmptyText}>{placeholder}</Text>
+        {placeholder ? <Text style={styles.previewEmptyText}>{placeholder}</Text> : null}
       </View>
     )}
   </View>
@@ -450,6 +509,8 @@ const ACCENT2 = '#fc913a';
 const TEXT_PRIMARY = '#f0f0f0';
 const TEXT_SECONDARY = '#888';
 const BORDER = '#2a2a2a';
+const GROUP_BORDER_GABIGABI = '#ff4e5033';
+const GROUP_BORDER_CONVERT = '#fc913a33';
 
 const styles = StyleSheet.create({
   container: {
@@ -535,6 +596,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  /* file info card (#97) */
+  fileInfoCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+    marginBottom: 8,
+  },
+  fileInfoTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  fileInfoText: {
+    fontSize: 13,
+    color: TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+
   /* size row */
   sizeRow: {
     flexDirection: 'row',
@@ -549,25 +633,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  /* group section wrapper (#98) */
+  groupSection: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  groupHeader: {
+    backgroundColor: '#1e1e1e',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  groupHeaderText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: TEXT_PRIMARY,
+    letterSpacing: 0.5,
+  },
+  groupHeaderSub: {
+    fontSize: 12,
+    color: TEXT_SECONDARY,
+    marginTop: 2,
+  },
+
   /* slider card */
   sliderCard: {
     backgroundColor: CARD_BG,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
 
   /* format section */
   sectionContainer: {
     backgroundColor: CARD_BG,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
     padding: 16,
-    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
   sectionTitle: {
     fontSize: 13,
@@ -591,8 +698,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#222',
   },
   formatButtonActive: {
-    borderColor: ACCENT,
-    backgroundColor: ACCENT,
+    borderColor: ACCENT2,
+    backgroundColor: ACCENT2,
   },
   gabigabiButtonActive: {
     borderColor: '#ff9800',
@@ -648,9 +755,9 @@ const styles = StyleSheet.create({
 
   /* process button */
   processButton: {
-    flex: 1,
     backgroundColor: ACCENT,
     paddingVertical: 16,
+    margin: 12,
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: ACCENT,
@@ -660,9 +767,9 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   convertButton: {
-    flex: 1,
     backgroundColor: ACCENT2,
     paddingVertical: 16,
+    margin: 12,
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: ACCENT2,
