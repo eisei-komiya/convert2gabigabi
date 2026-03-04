@@ -2,6 +2,7 @@ import { processWithFfmpeg } from '../data/ffmpeg/FfmpegProcessor';
 
 export interface ResizeResult {
   outputUri: string;
+  outputBytes: number;
   engine: 'ffmpeg';
 }
 
@@ -19,5 +20,5 @@ export async function resizeImage(
   gabigabiLevel: number = 2,
 ): Promise<ResizeResult> {
   const result = await processWithFfmpeg(inputUri, scalePct, gabigabiLevel);
-  return { outputUri: result.outputUri, engine: 'ffmpeg' };
+  return { outputUri: result.outputUri, outputBytes: result.outputBytes, engine: 'ffmpeg' };
 }
