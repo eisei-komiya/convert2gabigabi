@@ -2,6 +2,7 @@ import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { VideoFormat } from '../../state/store';
 
 export interface FfmpegProcessResult {
   outputUri: string;
@@ -82,10 +83,24 @@ const GABIGABI_CRF: Record<number, number> = {
  * @param scalePct       縮小率（1〜100 %）
  * @param gabigabiLevel  ガビガビレベル（0〜5、省略時 2）
  */
+/**
+ * 動画フォーマットに対応するFFmpegコーデック設定
+ */
+const VIDEO_FORMAT_CODECS: Record<VideoFormat, string[]> = {
+  mp4:  ['-c:v', 'libx264', '-c:a', 'aac'],
+  avi:  ['-c:v', 'libx264', '-c:a', 'mp3'],
+  wmv:  ['-c:v', 'wmv2', '-c:a', 'wmav2'],
+  mov:  ['-c:v', 'libx264', '-c:a', 'aac'],
+  mpg:  ['-c:v', 'mpeg2video', '-c:a', 'mp2'],
+  mkv:  ['-c:v', 'libx264', '-c:a', 'aac'],
+  webm: ['-c:v', 'libvpx-vp9', '-c:a', 'libvorbis'],
+};
+
 export async function processVideoWithFfmpeg(
   inputUri: string,
   scalePct: number,
   gabigabiLevel: number = 2,
+  outputFormat: VideoFormat = 'mp4',
 ): Promise<FfmpegProcessResult> {
   if (scalePct <= 0 || scalePct > 100) {
     throw new Error('scalePct must be within (0, 100]');
@@ -113,7 +128,7 @@ export async function processVideoWithFfmpeg(
   const stem = fileName.replace(/\.[^.]+$/, '');
   const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
-  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.mp4`;
+  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.${outputFormat}`;
   const outputPath = outputUri.replace('file://', '');
 
   console.log('[FFmpeg] video outputPath:', outputPath);
@@ -121,17 +136,18 @@ export async function processVideoWithFfmpeg(
   const crf = GABIGABI_CRF[gabigabiLevel] ?? 40;
   const scale = scalePct / 100;
 
+  const codecArgs = VIDEO_FORMAT_CODECS[outputFormat] ?? VIDEO_FORMAT_CODECS.mp4;
+
   // -vf scale でリサイズ、-crf で品質を制御してガビガビ化
   // scale の値を偶数に丸める（H.264 の要件）
   const cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-vf', `"scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2"`,
-    '-c:v', 'libx264',
-    '-crf', String(crf),
-    '-c:a', 'copy',
+    ...codecArgs,
+    outputFormat !== 'webm' ? `-crf ${String(crf)}` : '',
     `"${outputPath}"`,
-  ].join(' ');
+  ].filter(Boolean).join(' ');
 
   const session = await FFmpegKit.execute(cmd);
   const rc = await session.getReturnCode();

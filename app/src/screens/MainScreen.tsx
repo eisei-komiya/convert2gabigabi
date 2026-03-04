@@ -22,6 +22,7 @@ import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import ErrorModal from '../components/ErrorModal';
 import {useAppStore} from '../state/store';
+import {VideoFormat} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
@@ -32,6 +33,16 @@ const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
   {label: 'PNG', value: 'png'},
   {label: 'WebP (非対応)', value: 'webp'},
+];
+
+const VIDEO_FORMAT_OPTIONS: {label: string; value: VideoFormat}[] = [
+  {label: 'MP4', value: 'mp4'},
+  {label: 'AVI', value: 'avi'},
+  {label: 'WMV', value: 'wmv'},
+  {label: 'MOV', value: 'mov'},
+  {label: 'MPG', value: 'mpg'},
+  {label: 'MKV', value: 'mkv'},
+  {label: 'WebM', value: 'webm'},
 ];
 
 const GABIGABI_LEVELS: {label: string; value: number}[] = [
@@ -208,6 +219,7 @@ const MainScreen = () => {
     outputFormat,
     convertQuality,
     gabigabiLevel,
+    videoOutputFormat,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
@@ -215,6 +227,7 @@ const MainScreen = () => {
     setOutputFormat,
     setConvertQuality,
     setGabigabiLevel,
+    setVideoOutputFormat,
   } = useAppStore();
 
   const [errorModal, setErrorModal] = useState<{visible: boolean; title: string; message: string}>({
@@ -337,7 +350,7 @@ const MainScreen = () => {
 
       if (selectedMediaType === 'video') {
         // 動画のガビガビ化
-        const result = await processVideoWithFfmpeg(selectedImage, resizePercent, gabigabiLevel ?? 0);
+        const result = await processVideoWithFfmpeg(selectedImage, resizePercent, gabigabiLevel ?? 0, videoOutputFormat);
         resultUri = result.outputUri;
         resultBytes = result.outputBytes;
       } else {
@@ -580,6 +593,27 @@ const MainScreen = () => {
         {/* ── Format Conversion Section ── */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>出力フォーマット</Text>
+          {selectedMediaType === 'video' ? (
+            <View style={styles.formatRow}>
+              {VIDEO_FORMAT_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.formatButton,
+                    videoOutputFormat === opt.value && styles.formatButtonActive,
+                  ]}
+                  onPress={() => setVideoOutputFormat(opt.value)}>
+                  <Text
+                    style={[
+                      styles.formatButtonText,
+                      videoOutputFormat === opt.value && styles.formatButtonTextActive,
+                    ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
           <View style={styles.formatRow}>
             {FORMAT_OPTIONS.map(opt => (
               <TouchableOpacity
@@ -599,8 +633,9 @@ const MainScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          )}
 
-          {outputFormat !== 'png' && (
+          {selectedMediaType !== 'video' && outputFormat !== 'png' && (
             <View style={styles.qualityRow}>
               <Text style={styles.qualityLabel}>
                 品質: {convertQuality}%
@@ -673,9 +708,9 @@ const MainScreen = () => {
 
         {/* Main action buttons */}
         <TouchableOpacity
-          style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
           onPress={handleProcess}
-          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          disabled={!selectedImage || isProcessing}
           activeOpacity={0.8}>
           {isProcessing && processingAction === 'gabigabi' ? (
             <View style={styles.processingRow}>
