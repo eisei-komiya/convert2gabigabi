@@ -1,5 +1,5 @@
 import {create} from 'zustand';
-import { ImageFormat } from '../domain/useConvertImage';
+import { ImageFormat } from '../domain/convertImage';
 
 interface AppState {
   selectedImage: string | null;

@@ -20,7 +20,7 @@ import ErrorModal from '../components/ErrorModal';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
-import {useConvertImage, formatBytes, ImageFormat} from '../domain/useConvertImage';
+import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
@@ -105,7 +105,7 @@ const MainScreen = () => {
     }
     setIsProcessing(true);
     try {
-      const result = await useConvertImage(selectedImage, {
+      const result = await convertImage(selectedImage, {
         outputFormat,
         quality: convertQuality,
       });
