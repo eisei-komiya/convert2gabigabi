@@ -51,7 +51,9 @@ export async function processWithFfmpeg(
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
   const stem = fileName.replace(/\.[^.]+$/, '');
-  const ext = fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg';
+  const inputExt = (fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg').toLowerCase();
+  // PNG はロスレスなので -q:v が無効になる。JPEG に変換して品質劣化を有効にする。
+  const ext = inputExt === '.png' ? '.jpg' : inputExt;
   const cacheDir = getCacheDir();
   const suffix = Date.now();
   const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
