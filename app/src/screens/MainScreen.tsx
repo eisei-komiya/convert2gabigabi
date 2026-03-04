@@ -35,11 +35,12 @@ const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
 ];
 
 const GABIGABI_LEVELS: {label: string; value: number}[] = [
-  {label: '1 軽微', value: 1},
-  {label: '2 普通', value: 2},
-  {label: '3 重め', value: 3},
-  {label: '4 極重', value: 4},
-  {label: '5 💀', value: 5},
+  {label: '0', value: 0},
+  {label: '1', value: 1},
+  {label: '2', value: 2},
+  {label: '3', value: 3},
+  {label: '4', value: 4},
+  {label: '5', value: 5},
 ];
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -303,38 +304,45 @@ const MainScreen = () => {
     try {
       const inputInfo = await FileSystem.getInfoAsync(selectedImage, {size: true});
       const inputBytes = inputInfo.exists ? (inputInfo as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
-      const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel);
-      setProcessedImage(result.outputUri);
-      const beforeStr = formatBytes(inputBytes);
-      const afterStr = formatBytes(result.outputBytes);
-      Alert.alert('ガビガビ化完了', `Before: ${beforeStr}\nAfter: ${afterStr}`);
-      console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
-    } catch (err) {
-      showError('エラー', `変換に失敗しました: ${String(err)}`);
-    } finally {
-      setIsProcessing(false);
-      setProcessingAction(null);
-    }
-  };
 
-  const handleConvert = async () => {
-    if (!selectedImage) {
-      return;
-    }
-    setIsProcessing(true);
-    setProcessingAction('convert');
-    try {
-      const result = await convertImage(selectedImage, {
-        outputFormat,
-        quality: convertQuality,
-      });
-      setProcessedImage(result.outputUri);
-      const sizeStr = formatBytes(result.outputBytes);
-      Alert.alert(
-        '変換完了',
-        `${outputFormat.toUpperCase()}形式に変換しました\nサイズ: ${sizeStr}`,
-      );
-      console.log(`フォーマット変換完了 (engine: ${result.engine}):`, result.outputUri);
+      // ガビガビレベル0 かつ フォーマット変換が必要な場合はフォーマット変換のみ
+      // ガビガビレベル1以上の場合はガビガビ化（リサイズ+品質劣化）
+      // 両方の設定を1回の「変換」で適用する
+      let resultUri: string;
+      let resultBytes: number;
+
+      if (gabigabiLevel === 0) {
+        // ガビガビなし → フォーマット変換 + リサイズのみ
+        if (resizePercent === 100 && outputFormat === 'jpeg') {
+          // 何も変更なし
+          Alert.alert('変換不要', '現在の設定では変換の必要がありません。\nガビガビレベルを上げるか、フォーマットやリサイズを変更してください。');
+          return;
+        }
+        if (resizePercent < 100) {
+          // リサイズだけ実行（ガビガビレベル0 = 高品質）
+          const result = await resizeImage(selectedImage, resizePercent, 0);
+          resultUri = result.outputUri;
+          resultBytes = result.outputBytes;
+        } else {
+          // フォーマット変換のみ
+          const result = await convertImage(selectedImage, {
+            outputFormat,
+            quality: convertQuality,
+          });
+          resultUri = result.outputUri;
+          resultBytes = result.outputBytes;
+        }
+      } else {
+        // ガビガビ化（リサイズ + 品質劣化）
+        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel);
+        resultUri = result.outputUri;
+        resultBytes = result.outputBytes;
+      }
+
+      setProcessedImage(resultUri);
+      const beforeStr = formatBytes(inputBytes);
+      const afterStr = formatBytes(resultBytes);
+      Alert.alert('変換完了', `Before: ${beforeStr}\nAfter: ${afterStr}`);
     } catch (err) {
       showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
@@ -447,7 +455,7 @@ const MainScreen = () => {
             label="Before"
             uri={selectedImage}
             mediaType={selectedMediaType ?? 'image'}
-            placeholder={selectedImage ? '' : 'タップして選択'}
+            placeholder={selectedImage ? '' : ''}
             onPickerPress={undefined}
             onImagePress={handleImagePress}
           />
@@ -497,12 +505,7 @@ const MainScreen = () => {
           </View>
         )}
 
-        {/* ── Section: ガビガビ化 (#98) ── */}
-        <View style={styles.axisHeader}>
-          <View style={styles.axisHeaderLine} />
-          <Text style={styles.axisHeaderText}>⚡ ガビガビ化</Text>
-          <View style={styles.axisHeaderLine} />
-        </View>
+        {/* ── Settings ── */}
 
         {/* #80: video not supported notice */}
         {selectedMediaType === 'video' && (
@@ -538,13 +541,6 @@ const MainScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        {/* ── Section: フォーマット変換 (#98) ── */}
-        <View style={styles.axisHeader}>
-          <View style={styles.axisHeaderLine} />
-          <Text style={[styles.axisHeaderText, styles.axisHeaderTextConvert]}>🔄 フォーマット変換</Text>
-          <View style={styles.axisHeaderLine} />
         </View>
 
         {/* ── Format Conversion Section ── */}
@@ -598,38 +594,21 @@ const MainScreen = () => {
           )}
         </View>
 
-        {/* ── Action Buttons ── */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
-            onPress={handleProcess}
-            disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
-            activeOpacity={0.8}>
-            {isProcessing && processingAction === 'gabigabi' ? (
-              <View style={styles.processingRow}>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.buttonText}> 処理中...</Text>
-              </View>
-            ) : (
-              <Text style={styles.buttonText}>⚡ ガビガビ化</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.convertButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
-            onPress={handleConvert}
-            disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
-            activeOpacity={0.8}>
-            {processingAction === 'convert' ? (
-              <View style={styles.processingRow}>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.buttonText}> 処理中...</Text>
-              </View>
-            ) : (
-              <Text style={styles.buttonText}>フォーマット変換</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        {/* ── Single Convert Button ── */}
+        <TouchableOpacity
+          style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          onPress={handleProcess}
+          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          activeOpacity={0.8}>
+          {isProcessing && processingAction === 'gabigabi' ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.buttonText}> 処理中...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>🔄 変換</Text>
+          )}
+        </TouchableOpacity>
 
         {/* ── Discord Compress Button ── */}
         <TouchableOpacity
@@ -941,11 +920,11 @@ const styles = StyleSheet.create({
 
   /* process button */
   processButton: {
-    flex: 1,
     backgroundColor: ACCENT,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    marginBottom: 12,
     shadowColor: ACCENT,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
@@ -1073,29 +1052,6 @@ const styles = StyleSheet.create({
   fileInfoText: {
     fontSize: 13,
     color: TEXT_PRIMARY,
-  },
-
-  /* axis section headers (#98) */
-  axisHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 4,
-    gap: 8,
-  },
-  axisHeaderLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: BORDER,
-  },
-  axisHeaderText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: ACCENT,
-    letterSpacing: 0.5,
-  },
-  axisHeaderTextConvert: {
-    color: ACCENT2,
   },
 
   /* video notice (#80) */

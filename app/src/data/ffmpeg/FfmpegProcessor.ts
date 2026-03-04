@@ -15,6 +15,7 @@ const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
  * (#75) 全体的に値を上げてガビガビ効果を強めた。
  */
 const GABIGABI_QUALITY: Record<number, number> = {
+  0: 2,  // 現状維持（ほぼ劣化なし）
   1: 18, // 軽微
   2: 23, // 普通
   3: 27, // 重め
@@ -68,8 +69,8 @@ export async function processWithFfmpeg(
   if (scalePct <= 0 || scalePct > 100) {
     throw new Error('scalePct must be within (0, 100]');
   }
-  if (gabigabiLevel < 1 || gabigabiLevel > 5) {
-    throw new Error('gabigabiLevel must be 1-5');
+  if (gabigabiLevel < 0 || gabigabiLevel > 5) {
+    throw new Error('gabigabiLevel must be 0-5');
   }
 
   // 入力ファイルの存在確認とサイズチェック

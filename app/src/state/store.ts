@@ -20,12 +20,12 @@ interface AppState {
 
 export const useAppStore = create<AppState>(set => ({
   selectedImage: null,
-  resizePercent: 50,
+  resizePercent: 100,
   processedImage: null,
   isProcessing: false,
   outputFormat: 'jpeg',
   convertQuality: 85,
-  gabigabiLevel: 2,
+  gabigabiLevel: 0,
   setSelectedImage: image => set({selectedImage: image}),
   setResizePercent: percent => set({resizePercent: percent}),
   setProcessedImage: image => set({processedImage: image}),
