@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DEVICE="192.168.0.173:5555"
-PKG="com.eiseikomiya.convert2gabigabi"
+PKG="com.convert2gabigabi"
 APP_DIR="${APP_DIR:-$HOME/build/conv-app/app}"
 
 cd "$APP_DIR"
