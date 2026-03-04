@@ -519,7 +519,12 @@ const MainScreen = () => {
 
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
-          <ResizeSlider value={resizePercent} onValueChange={handleResizeChange} />
+          <ResizeSlider
+            value={resizePercent}
+            onValueChange={handleResizeChange}
+            originalWidth={fileInfo?.width}
+            originalHeight={fileInfo?.height}
+          />
         </View>
 
         {/* ── Gabigabi Level Section ── */}
@@ -597,39 +602,21 @@ const MainScreen = () => {
           )}
         </View>
 
-        {/* ── Single Convert Button ── */}
-        <TouchableOpacity
-          style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
-          onPress={handleProcess}
-          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
-          activeOpacity={0.8}>
-          {isProcessing && processingAction === 'gabigabi' ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.buttonText}> 処理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.buttonText}>🔄 変換</Text>
-          )}
-        </TouchableOpacity>
+        {(selectedImage || processedImage) && (
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleReset}
+            activeOpacity={0.7}>
+            <Text style={styles.resetButtonText}>リセット</Text>
+          </TouchableOpacity>
+        )}
 
-        {/* ── Discord Compress Button ── */}
-        <TouchableOpacity
-          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
-          onPress={handleDiscordCompress}
-          disabled={!selectedImage || isProcessing}
-          activeOpacity={0.8}>
-          {processingAction === 'discord' ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.buttonText}> 処理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.buttonText}>📤 Discord用に圧縮 (10MB以下)</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.spacer} />
+      </ScrollView>
 
-        {/* ── Cancel Button (#34) — shown during processing ── */}
+      {/* ── Floating Action Area (#112) ── */}
+      <View style={styles.floatingArea}>
+        {/* Cancel Button during processing */}
         {isProcessing && (
           <TouchableOpacity
             style={styles.cancelButton}
@@ -639,8 +626,8 @@ const MainScreen = () => {
           </TouchableOpacity>
         )}
 
-        {/* ── Save / Share Buttons ── */}
-        {processedImage && (
+        {/* Save / Share Buttons after conversion */}
+        {processedImage && !isProcessing && (
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.saveButton]}
@@ -658,17 +645,37 @@ const MainScreen = () => {
           </View>
         )}
 
-        {(selectedImage || processedImage) && (
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleReset}
-            activeOpacity={0.7}>
-            <Text style={styles.resetButtonText}>リセット</Text>
-          </TouchableOpacity>
-        )}
+        {/* Main action buttons */}
+        <TouchableOpacity
+          style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          onPress={handleProcess}
+          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          activeOpacity={0.8}>
+          {isProcessing && processingAction === 'gabigabi' ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.buttonText}> 処理中...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>🔄 変換</Text>
+          )}
+        </TouchableOpacity>
 
-        <View style={styles.spacer} />
-      </ScrollView>
+        <TouchableOpacity
+          style={[styles.discordButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          onPress={handleDiscordCompress}
+          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          activeOpacity={0.8}>
+          {processingAction === 'discord' ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.buttonText}> 処理中...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>📤 Discord用に圧縮 (10MB以下)</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -727,7 +734,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingBottom: 180,
   },
 
   /* header */
