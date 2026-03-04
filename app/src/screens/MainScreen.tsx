@@ -20,7 +20,6 @@ import Share from 'react-native-share';
 import * as FileSystem from 'expo-file-system/legacy';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
-import FileSizeLabel from '../components/FileSizeLabel';
 import ErrorModal from '../components/ErrorModal';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
@@ -224,6 +223,7 @@ const MainScreen = () => {
 
   // #97: file info
   const [fileInfo, setFileInfo] = useState<{name: string; size: string; width: number; height: number} | null>(null);
+  const outputBytesRef = useRef(0);
 
   useEffect(() => {
     if (!selectedImage) {
@@ -340,6 +340,7 @@ const MainScreen = () => {
       }
 
       setProcessedImage(resultUri);
+      outputBytesRef.current = resultBytes;
     } catch (err) {
       showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
@@ -391,6 +392,7 @@ const MainScreen = () => {
     setSelectedImage(null);
     setSelectedMediaType(null);
     setProcessedImage(null);
+    outputBytesRef.current = 0;
   };
 
   const handleDiscordCompress = async () => {
@@ -402,8 +404,7 @@ const MainScreen = () => {
     try {
       const result = await compressForDiscord(selectedImage);
       setProcessedImage(result.outputUri);
-      const sizeMB = (result.outputBytes / (1024 * 1024)).toFixed(2);
-      const ratioPct = Math.round((1 - result.compressionRatio) * 100);
+      outputBytesRef.current = result.outputBytes;
       
     } catch (err) {
       showError('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
@@ -443,27 +444,51 @@ const MainScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        {/* ── Before / After Preview ── */}
+        {/* ── Before / After Preview with Info (#119) ── */}
         <View style={styles.previewRow}>
-          <PreviewCard
-            label="Before"
-            uri={selectedImage}
-            mediaType={selectedMediaType ?? 'image'}
-            placeholder={selectedImage ? '' : ''}
-            onPickerPress={undefined}
-            onImagePress={handleImagePress}
-          />
+          <View style={styles.previewColumn}>
+            <PreviewCard
+              label="BEFORE"
+              uri={selectedImage}
+              mediaType={selectedMediaType ?? 'image'}
+              placeholder={selectedImage ? '' : ''}
+              onPickerPress={undefined}
+              onImagePress={handleImagePress}
+            />
+            {selectedImage && fileInfo && (
+              <View style={styles.infoBlock}>
+                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {fileInfo.name}</Text>
+                <Text style={styles.infoText}>💾 {fileInfo.size}</Text>
+                {fileInfo.width > 0 && (
+                  <Text style={styles.infoText}>🖼 {fileInfo.width} × {fileInfo.height} px</Text>
+                )}
+                <Text style={styles.infoText}>🏷 {(fileInfo.name.split('.').pop() ?? '').toUpperCase()}</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.arrowContainer}>
             <Text style={styles.arrow}>›</Text>
           </View>
-          <PreviewCard
-            label="After"
-            uri={processedImage}
-            mediaType="image"
-            placeholder={selectedImage ? '変換後' : '—'}
-            onPickerPress={undefined}
-            onImagePress={handleImagePress}
-          />
+          <View style={styles.previewColumn}>
+            <PreviewCard
+              label="AFTER"
+              uri={processedImage}
+              mediaType="image"
+              placeholder={selectedImage ? '変換後' : '—'}
+              onPickerPress={undefined}
+              onImagePress={handleImagePress}
+            />
+            {selectedImage && fileInfo && (
+              <View style={styles.infoBlock}>
+                <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
+                <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
+                {outputFormat !== 'png' && (
+                  <Text style={styles.infoText}>✨ 品質 {convertQuality}%</Text>
+                )}
+                <Text style={styles.infoText}>💾 {processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* ── Image Picker Button ── */}
@@ -472,32 +497,6 @@ const MainScreen = () => {
           selectedImage={selectedImage || undefined}
           selectedMediaType={selectedMediaType ?? undefined}
         />
-
-        {/* ── File Info (#97) ── */}
-        {selectedImage && fileInfo && (
-          <View style={styles.fileInfoCard}>
-            <Text style={styles.fileInfoTitle}>📄 ファイル情報</Text>
-            <Text style={styles.fileInfoText} numberOfLines={1} ellipsizeMode="middle">
-              {fileInfo.name}
-            </Text>
-            <Text style={styles.fileInfoText}>
-              サイズ: {fileInfo.size}{fileInfo.width > 0 ? `　　${fileInfo.width} × ${fileInfo.height} px` : ''}
-            </Text>
-          </View>
-        )}
-
-        {/* ── File Size ── */}
-        {selectedImage && (
-          <View style={styles.sizeRow}>
-            <FileSizeLabel label="元のサイズ" uri={selectedImage} />
-            {processedImage && (
-              <>
-                <Text style={styles.sizeSeparator}>→</Text>
-                <FileSizeLabel label="変換後" uri={processedImage} />
-              </>
-            )}
-          </View>
-        )}
 
         {/* ── Settings ── */}
 
@@ -751,10 +750,24 @@ const styles = StyleSheet.create({
   /* before/after row */
   previewRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 20,
     marginBottom: 12,
     gap: 8,
+  },
+  previewColumn: {
+    flex: 1,
+  },
+  infoBlock: {
+    backgroundColor: CARD_BG,
+    borderRadius: 10,
+    padding: 8,
+    marginTop: 6,
+    gap: 2,
+  },
+  infoText: {
+    fontSize: 11,
+    color: '#aaa',
   },
   previewCard: {
     flex: 1,
