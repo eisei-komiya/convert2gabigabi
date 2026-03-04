@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import FileSizeLabel from '../components/FileSizeLabel';
+import ErrorModal from '../components/ErrorModal';
 import {useAppStore} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
@@ -53,6 +54,20 @@ const MainScreen = () => {
     setGabigabiLevel,
   } = useAppStore();
 
+  const [errorModal, setErrorModal] = useState<{visible: boolean; title: string; message: string}>({
+    visible: false,
+    title: 'エラー',
+    message: '',
+  });
+
+  const showError = useCallback((title: string, message: string) => {
+    setErrorModal({visible: true, title, message});
+  }, []);
+
+  const hideError = useCallback(() => {
+    setErrorModal(prev => ({...prev, visible: false}));
+  }, []);
+
   const handleImageSelect = useCallback(
     (imageUri: string) => {
       setSelectedImage(imageUri);
@@ -78,7 +93,7 @@ const MainScreen = () => {
       setProcessedImage(result.outputUri);
       console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
-      Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+      showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -102,7 +117,7 @@ const MainScreen = () => {
       );
       console.log(`フォーマット変換完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
-      Alert.alert('エラー', `変換に失敗しました: ${String(err)}`);
+      showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -121,7 +136,7 @@ const MainScreen = () => {
       await MediaLibrary.saveToLibraryAsync(processedImage);
       Alert.alert('保存完了', 'カメラロールに保存しました');
     } catch (err) {
-      Alert.alert('エラー', `保存に失敗しました: ${String(err)}`);
+      showError('エラー', `保存に失敗しました: ${String(err)}`);
     }
   };
 
@@ -137,7 +152,7 @@ const MainScreen = () => {
       }
       await Sharing.shareAsync(processedImage);
     } catch (err) {
-      Alert.alert('エラー', `共有に失敗しました: ${String(err)}`);
+      showError('エラー', `共有に失敗しました: ${String(err)}`);
     }
   };
 
@@ -162,7 +177,7 @@ const MainScreen = () => {
         Alert.alert('圧縮完了', `${sizeMB} MB（${ratioPct}% 削減）`);
       }
     } catch (err) {
-      Alert.alert('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
+      showError('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -171,6 +186,14 @@ const MainScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0d0d0d" />
+
+      {/* ── Error Modal ── */}
+      <ErrorModal
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        onClose={hideError}
+      />
 
       {/* ── Header ── */}
       <View style={styles.header}>
