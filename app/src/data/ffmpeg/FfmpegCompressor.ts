@@ -1,5 +1,6 @@
-import { FFmpegKit, FFprobeKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system';
+import { FFmpegKit, FFmpegKitConfig, ReturnCode } from 'ffmpeg-kit-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface CompressResult {
   outputUri: string;
@@ -18,56 +19,26 @@ function isVideoFile(uri: string): boolean {
 }
 
 /**
- * FFmpegのログから実際のエラーメッセージを抽出する。
- * バージョンバナーや設定情報を除き、エラー行のみ返す。
- */
-function extractErrorFromLogs(logs: string): string {
-  const errorLines = logs
-    .split('\n')
-    .filter(line => {
-      const lower = line.toLowerCase();
-      return (
-        lower.includes('error') ||
-        lower.includes('invalid') ||
-        lower.includes('no such file') ||
-        lower.includes('not found') ||
-        lower.includes('failed') ||
-        lower.includes('unable') ||
-        lower.includes('cannot') ||
-        lower.includes('unrecognized') ||
-        lower.includes('unknown')
-      );
-    })
-    .filter(line => !line.startsWith('ffmpeg version') && !line.startsWith('  '))
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
-
-  if (errorLines.length > 0) {
-    return errorLines.slice(0, 3).join(' | ');
-  }
-
-  const trimmed = logs.trim();
-  return trimmed.length > 200 ? '...' + trimmed.slice(-200) : trimmed;
-}
-
-/**
- * FFprobeKitを使って動画の長さ（秒）を取得する。
+ * FFmpegを使って動画の長さ（秒）を取得する。
  */
 async function getVideoDurationSec(inputPath: string): Promise<number> {
-  const session = await FFprobeKit.execute(
-    `-v quiet -print_format json -show_entries format=duration "${inputPath}"`,
-  );
-  const output = await session.getOutput();
-  try {
-    const parsed = JSON.parse(output ?? '{}');
-    const duration = parseFloat(parsed?.format?.duration ?? '0');
-    if (!duration || isNaN(duration)) {
-      throw new Error('動画の長さを取得できませんでした');
-    }
-    return duration;
-  } catch {
-    throw new Error('動画の長さを取得できませんでした');
-  }
+  return new Promise((resolve, reject) => {
+    FFmpegKitConfig.enableLogCallback(undefined);
+    FFmpegKit.execute(`-i "${inputPath}" -hide_banner`)
+      .then(async (session) => {
+        const logs = await session.getAllLogsAsString();
+        const match = logs.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+        if (match) {
+          const h = parseInt(match[1], 10);
+          const m = parseInt(match[2], 10);
+          const s = parseFloat(match[3]);
+          resolve(h * 3600 + m * 60 + s);
+        } else {
+          reject(new Error('動画の長さを取得できませんでした'));
+        }
+      })
+      .catch(reject);
+  });
 }
 
 /**
@@ -93,14 +64,15 @@ async function compressImageToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'image';
-  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  // 圧縮はJPEG出力（-q:v による品質制御が有効なフォーマット）
+  const cacheDirUri = Paths.cache.uri;
+  const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
+  const suffix = Date.now();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.jpg`;
   const outputPath = outputUri.replace('file://', '');
 
   let lo = 1;
   let hi = 31; // FFmpeg -q:v range: 1 (best) to 31 (worst)
+  let bestQv = hi;
   let bestBytes = 0;
 
   // バイナリサーチで targetBytes 以下に収まる最高品質を探す
@@ -110,21 +82,22 @@ async function compressImageToTarget(
       '-y',
       '-i', `"${inputPath}"`,
       '-q:v', String(mid),
+      '-update', '1',
+      '-frames:v', '1',
       `"${outputPath}"`,
     ].join(' ');
 
     const session = await FFmpegKit.execute(cmd);
     const rc = await session.getReturnCode();
     if (!ReturnCode.isSuccess(rc)) {
-      const logs = await session.getAllLogsAsString();
-      const errorSummary = extractErrorFromLogs(logs);
-      throw new Error(`FFmpeg画像圧縮に失敗しました: ${errorSummary}`);
+      throw new Error('FFmpeg画像圧縮に失敗しました');
     }
 
     const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
     const outBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
 
     if (outBytes <= targetBytes) {
+      bestQv = mid;
       bestBytes = outBytes;
       hi = mid - 1; // より高品質（低い qv）を試す
     } else {
@@ -139,14 +112,14 @@ async function compressImageToTarget(
       '-i', `"${inputPath}"`,
       '-vf', '"scale=iw*0.5:ih*0.5"',
       '-q:v', '31',
+      '-update', '1',
+      '-frames:v', '1',
       `"${outputPath}"`,
     ].join(' ');
     const session = await FFmpegKit.execute(cmd);
     const rc = await session.getReturnCode();
     if (!ReturnCode.isSuccess(rc)) {
-      const logs = await session.getAllLogsAsString();
-      const errorSummary = extractErrorFromLogs(logs);
-      throw new Error(`FFmpeg画像圧縮（スケールダウン）に失敗しました: ${errorSummary}`);
+      throw new Error('FFmpeg画像圧縮（スケールダウン）に失敗しました');
     }
     const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
     bestBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
@@ -195,8 +168,9 @@ async function compressVideoToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
-  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const cacheDirUri = Paths.cache.uri;
+  const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
+  const suffix = Date.now();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
 
@@ -215,8 +189,7 @@ async function compressVideoToTarget(
   const rc = await session.getReturnCode();
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await session.getAllLogsAsString();
-    const errorSummary = extractErrorFromLogs(logs);
-    throw new Error(`FFmpeg動画圧縮に失敗しました: ${errorSummary}`);
+    throw new Error(`FFmpeg動画圧縮に失敗しました: ${logs}`);
   }
 
   const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
