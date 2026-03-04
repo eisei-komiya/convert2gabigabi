@@ -134,16 +134,29 @@ export async function processVideoWithFfmpeg(
 
   const codecArgs = VIDEO_FORMAT_CODECS[outputFormat] ?? VIDEO_FORMAT_CODECS.mp4;
 
-  // -vf scale でリサイズ、-crf で品質を制御してガビガビ化
+  // フォーマットに応じた品質パラメータを選択する
+  // - mpeg2video: -q:v (1=最高, 31=最低) — -crf 非対応
+  // - libvpx-vp9 (webm): -crf + -b:v 0 (constrained quality mode)
+  // - libx264 / wmv2: -crf
+  let qualityArgs: string[];
+  if (outputFormat === 'mpg') {
+    qualityArgs = ['-q:v', String(crf)];
+  } else if (outputFormat === 'webm') {
+    qualityArgs = ['-crf', String(crf), '-b:v', '0'];
+  } else {
+    qualityArgs = ['-crf', String(crf)];
+  }
+
+  // -vf scale でリサイズ、品質パラメータでガビガビ化
   // scale の値を偶数に丸める（H.264 の要件）
   const cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-vf', `"scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2"`,
     ...codecArgs,
-    outputFormat !== 'webm' ? `-crf ${String(crf)}` : '',
+    ...qualityArgs,
     `"${outputPath}"`,
-  ].filter(Boolean).join(' ');
+  ].join(' ');
 
   const session = await FFmpegKit.execute(cmd);
   const rc = await session.getReturnCode();
