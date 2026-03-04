@@ -533,12 +533,9 @@ const MainScreen = () => {
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
                 <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + outputFormat) : '—'}</Text>
-                <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
-                <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
-                {outputFormat !== 'png' && (
-                  <Text style={styles.infoText}>✨ 品質 {convertQuality}%</Text>
-                )}
                 <Text style={styles.infoText}>💾 {processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
+                <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
+                <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
               </View>
             )}
           </View>
