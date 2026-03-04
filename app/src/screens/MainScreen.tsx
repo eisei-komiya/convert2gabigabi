@@ -340,9 +340,6 @@ const MainScreen = () => {
       }
 
       setProcessedImage(resultUri);
-      const beforeStr = formatBytes(inputBytes);
-      const afterStr = formatBytes(resultBytes);
-      Alert.alert('変換完了', `Before: ${beforeStr}\nAfter: ${afterStr}`);
     } catch (err) {
       showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
@@ -407,11 +404,7 @@ const MainScreen = () => {
       setProcessedImage(result.outputUri);
       const sizeMB = (result.outputBytes / (1024 * 1024)).toFixed(2);
       const ratioPct = Math.round((1 - result.compressionRatio) * 100);
-      if (result.outputUri === selectedImage) {
-        Alert.alert('完了', `すでに10MB以下です（${sizeMB} MB）`);
-      } else {
-        Alert.alert('圧縮完了', `${sizeMB} MB（${ratioPct}% 削減）`);
-      }
+      
     } catch (err) {
       showError('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
     } finally {
@@ -670,7 +663,7 @@ const MainScreen = () => {
               <Text style={styles.buttonText}> 処理中...</Text>
             </View>
           ) : (
-            <Text style={styles.buttonText}>📤 Discord用に圧縮 (10MB以下)</Text>
+            <Text style={styles.buttonText}>📤 Discord用に10MB以下にクイック圧縮</Text>
           )}
         </TouchableOpacity>
       </View>
