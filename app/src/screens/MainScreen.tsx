@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import FileSizeLabel from '../components/FileSizeLabel';
@@ -60,6 +61,8 @@ const MainScreen = () => {
     message: '',
   });
 
+  const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'discord' | null>(null);
+
   const showError = useCallback((title: string, message: string) => {
     setErrorModal({visible: true, title, message});
   }, []);
@@ -88,14 +91,21 @@ const MainScreen = () => {
       return;
     }
     setIsProcessing(true);
+    setProcessingAction('gabigabi');
     try {
+      const inputInfo = await FileSystem.getInfoAsync(selectedImage, {size: true});
+      const inputBytes = inputInfo.exists ? (inputInfo as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
       const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel);
       setProcessedImage(result.outputUri);
+      const beforeStr = formatBytes(inputBytes);
+      const afterStr = formatBytes(result.outputBytes);
+      Alert.alert('ガビガビ化完了', `Before: ${beforeStr}\nAfter: ${afterStr}`);
       console.log(`リサイズ完了 (engine: ${result.engine}):`, result.outputUri);
     } catch (err) {
       showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -104,6 +114,7 @@ const MainScreen = () => {
       return;
     }
     setIsProcessing(true);
+    setProcessingAction('convert');
     try {
       const result = await useConvertImage(selectedImage, {
         outputFormat,
@@ -120,6 +131,7 @@ const MainScreen = () => {
       showError('エラー', `変換に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -166,6 +178,7 @@ const MainScreen = () => {
       return;
     }
     setIsProcessing(true);
+    setProcessingAction('discord');
     try {
       const result = await compressForDiscord(selectedImage);
       setProcessedImage(result.outputUri);
@@ -180,6 +193,7 @@ const MainScreen = () => {
       showError('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
     } finally {
       setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -346,9 +360,14 @@ const MainScreen = () => {
             onPress={handleConvert}
             disabled={!selectedImage || isProcessing}
             activeOpacity={0.8}>
-            <Text style={styles.buttonText}>
-              {isProcessing ? '処理中...' : 'フォーマット変換'}
-            </Text>
+            {processingAction === 'convert' ? (
+              <View style={styles.processingRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.buttonText}> 処理中...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>フォーマット変換</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -358,9 +377,14 @@ const MainScreen = () => {
           onPress={handleDiscordCompress}
           disabled={!selectedImage || isProcessing}
           activeOpacity={0.8}>
-          <Text style={styles.buttonText}>
-            {isProcessing ? '処理中...' : '📤 Discord用に圧縮 (10MB以下)'}
-          </Text>
+          {processingAction === 'discord' ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.buttonText}> 処理中...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>📤 Discord用に圧縮 (10MB以下)</Text>
+          )}
         </TouchableOpacity>
 
         {/* ── Save / Share Buttons ── */}
