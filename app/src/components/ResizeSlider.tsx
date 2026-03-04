@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {View, Text, StyleSheet, TextInput, TouchableOpacity} from 'react-native';
 
 interface ResizeSliderProps {
@@ -16,10 +16,34 @@ const INPUT_BG = '#111';
 const PRESETS = [25, 50, 75, 100];
 
 const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange}) => {
+  // 入力中の文字列を別stateで管理することで、"7." のような中間状態が失われないようにする
+  const [inputText, setInputText] = useState(value.toString());
+
+  // 外部からvalueが変わった場合（プリセットボタン等）はinputTextも更新する
+  useEffect(() => {
+    setInputText(value.toString());
+  }, [value]);
+
   const handleTextChange = (text: string) => {
-    const numValue = parseFloat(text);
+    setInputText(text);
+    // 数値として確定している場合のみparentに伝える（末尾の小数点は確定扱いしない）
+    if (!text.endsWith('.')) {
+      const numValue = parseFloat(text);
+      if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
+        onValueChange(numValue);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    // フォーカスが外れたときに最終的な数値に変換してparentに渡す
+    const numValue = parseFloat(inputText);
     if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
       onValueChange(numValue);
+      setInputText(numValue.toString());
+    } else {
+      // 無効な入力の場合は現在のvalueに戻す
+      setInputText(value.toString());
     }
   };
 
@@ -54,8 +78,9 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange}) => {
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
-            value={value.toString()}
+            value={inputText}
             onChangeText={handleTextChange}
+            onBlur={handleBlur}
             keyboardType="numeric"
             placeholder="1〜100"
             placeholderTextColor={TEXT_SECONDARY}
