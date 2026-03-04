@@ -1,7 +1,7 @@
 import { Paths } from 'expo-file-system';
-import { FFmpegKit, FFmpegKitConfig, ReturnCode } from 'ffmpeg-kit-react-native';
+import { FFmpegKit, FFprobeKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs, extractDurationFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
 export interface CompressResult {
   outputUri: string;
@@ -21,23 +21,19 @@ function isVideoFile(uri: string): boolean {
 }
 
 /**
- * FFmpegを使って動画の長さ（秒）を取得する。
+ * FFprobeKitを使って動画の長さ（秒）を取得する。
+ * (#46) FFmpeg エラーログのパースから FFprobeKit.getMediaInformation() に移行。
  */
 async function getVideoDurationSec(inputPath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    FFmpegKitConfig.enableLogCallback(undefined);
-    FFmpegKit.execute(`-i "${inputPath}" -hide_banner`)
-      .then(async (session) => {
-        const logs = await session.getAllLogsAsString();
-        const duration = extractDurationFromLogs(logs);
-        if (duration !== null) {
-          resolve(duration);
-        } else {
-          reject(new Error('動画の長さを取得できませんでした'));
-        }
-      })
-      .catch(reject);
-  });
+  const session = await FFprobeKit.getMediaInformation(`"${inputPath}"`);
+  const info = await session.getMediaInformation();
+  if (info) {
+    const duration = info.getDuration();
+    if (duration != null && !isNaN(Number(duration))) {
+      return Number(duration);
+    }
+  }
+  throw new Error('動画の長さを取得できませんでした');
 }
 
 /**
