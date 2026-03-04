@@ -44,10 +44,12 @@ async function getVideoDurationSec(inputPath: string): Promise<number> {
  *
  * @param inputUri    入力画像ファイルURI
  * @param targetBytes 目標ファイルサイズ（バイト）
+ * @param forceJpeg   true の場合は入力形式に関わらず JPEG で出力する（Discord送信など）
  */
 async function compressImageToTarget(
   inputUri: string,
   targetBytes: number,
+  forceJpeg: boolean = false,
 ): Promise<CompressResult> {
   const inputPath = inputUri.replace('file://', '');
   const info = await FileSystem.getInfoAsync(inputUri, { size: true });
@@ -62,10 +64,13 @@ async function compressImageToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'image';
+  // forceJpeg が false の場合は入力ファイルの拡張子を保持する
+  const inputExt = inputPath.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const outputExt = forceJpeg ? 'jpg' : inputExt;
   const cacheDirUri = Paths.cache.uri;
   const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
   const suffix = generateUniqueFileSuffix();
-  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.jpg`;
+  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.${outputExt}`;
   const outputPath = outputUri.replace('file://', '');
 
   let lo = 1;
@@ -210,7 +215,8 @@ export async function compressForDiscord(inputUri: string): Promise<CompressResu
   if (isVideoFile(inputUri)) {
     return compressVideoToTarget(inputUri, DISCORD_MAX_BYTES);
   } else {
-    return compressImageToTarget(inputUri, DISCORD_MAX_BYTES);
+    // Discord 送信用: JPEG に変換して圧縮（互換性優先）
+    return compressImageToTarget(inputUri, DISCORD_MAX_BYTES, true);
   }
 }
 
