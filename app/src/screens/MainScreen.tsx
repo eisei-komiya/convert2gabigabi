@@ -332,16 +332,23 @@ const MainScreen = () => {
     setIsProcessing(true);
     setProcessingAction('gabigabi');
     try {
+      let resultUri: string;
+      let resultBytes: number;
+
+      if (selectedMediaType === 'video') {
+        // 動画のガビガビ化
+        const result = await processVideoWithFfmpeg(selectedImage, resizePercent, gabigabiLevel ?? 0);
+        resultUri = result.outputUri;
+        resultBytes = result.outputBytes;
+      } else {
       const inputInfo = await FileSystem.getInfoAsync(selectedImage, {size: true});
       const inputBytes = inputInfo.exists ? (inputInfo as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
 
       // ガビガビレベル0 かつ フォーマット変換が必要な場合はフォーマット変換のみ
       // ガビガビレベル1以上の場合はガビガビ化（リサイズ+品質劣化）
       // 両方の設定を1回の「変換」で適用する
-      let resultUri: string;
-      let resultBytes: number;
 
-      if (gabigabiLevel === 0) {
+      if (gabigabiLevel === null || gabigabiLevel === 0) {
         // ガビガビなし → フォーマット変換 + リサイズのみ
         if (resizePercent === 100 && outputFormat === 'jpeg') {
           // 何も変更なし
@@ -364,10 +371,11 @@ const MainScreen = () => {
         }
       } else {
         // ガビガビ化（リサイズ + 品質劣化）
-        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel);
+        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel!);
         resultUri = result.outputUri;
         resultBytes = result.outputBytes;
       }
+      } // end else (image)
 
       setProcessedImage(resultUri);
       outputBytesRef.current = resultBytes;
@@ -529,6 +537,30 @@ const MainScreen = () => {
           selectedMediaType={selectedMediaType ?? undefined}
         />
 
+        {/* ── Template Section (旧ガビガビレベル) ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>テンプレート</Text>
+          <View style={styles.formatRow}>
+            {GABIGABI_LEVELS.map(item => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.formatButton,
+                  gabigabiLevel === item.value && styles.gabigabiButtonActive,
+                ]}
+                onPress={() => handleTemplateSelect(item.value)}>
+                <Text
+                  style={[
+                    styles.formatButtonText,
+                    gabigabiLevel === item.value && styles.formatButtonTextActive,
+                  ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* ── Settings ── */}
 
         {/* #80: video not supported notice */}
@@ -546,30 +578,6 @@ const MainScreen = () => {
             originalWidth={fileInfo?.width}
             originalHeight={fileInfo?.height}
           />
-        </View>
-
-        {/* ── Gabigabi Level Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>ガビガビレベル</Text>
-          <View style={styles.formatRow}>
-            {GABIGABI_LEVELS.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                style={[
-                  styles.formatButton,
-                  gabigabiLevel === item.value && styles.gabigabiButtonActive,
-                ]}
-                onPress={() => setGabigabiLevel(item.value)}>
-                <Text
-                  style={[
-                    styles.formatButtonText,
-                    gabigabiLevel === item.value && styles.formatButtonTextActive,
-                  ]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         {/* ── Format Conversion Section ── */}
@@ -608,7 +616,7 @@ const MainScreen = () => {
                       styles.qualityPreset,
                       convertQuality === q && styles.qualityPresetActive,
                     ]}
-                    onPress={() => setConvertQuality(q)}>
+                    onPress={() => handleQualityChange(q)}>
                     <Text
                       style={[
                         styles.qualityPresetText,
