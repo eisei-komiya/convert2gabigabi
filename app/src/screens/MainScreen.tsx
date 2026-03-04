@@ -380,9 +380,12 @@ const MainScreen = () => {
         return;
       }
       // Copy to cache directory to avoid expo-sharing permission issues on Android
+      // If already in cache, share directly to avoid "same source and destination" error
       const filename = processedImage.split('/').pop() ?? 'shared_image.jpg';
       const cacheUri = `${FileSystem.cacheDirectory}${filename}`;
-      await FileSystem.copyAsync({from: processedImage, to: cacheUri});
+      if (processedImage !== cacheUri) {
+        await FileSystem.copyAsync({from: processedImage, to: cacheUri});
+      }
       await Sharing.shareAsync(cacheUri);
     } catch (err) {
       showError('エラー', `共有に失敗しました: ${String(err)}`);
