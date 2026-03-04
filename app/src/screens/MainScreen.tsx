@@ -214,6 +214,9 @@ const MainScreen = () => {
 
   const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'discord' | null>(null);
 
+  // #80: selected media type
+  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
+
   // #77: fullscreen modal state
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
@@ -260,8 +263,9 @@ const MainScreen = () => {
   }, []);
 
   const handleImageSelect = useCallback(
-    (imageUri: string) => {
+    (imageUri: string, mediaType: 'image' | 'video' = 'image') => {
       setSelectedImage(imageUri);
+      setSelectedMediaType(mediaType);
       setProcessedImage(null);
     },
     [setSelectedImage, setProcessedImage],
@@ -379,6 +383,7 @@ const MainScreen = () => {
 
   const handleReset = () => {
     setSelectedImage(null);
+    setSelectedMediaType(null);
     setProcessedImage(null);
   };
 
@@ -441,7 +446,8 @@ const MainScreen = () => {
           <PreviewCard
             label="Before"
             uri={selectedImage}
-            placeholder={selectedImage ? '' : 'タップして画像を選択'}
+            mediaType={selectedMediaType ?? 'image'}
+            placeholder={selectedImage ? '' : 'タップして選択'}
             onPickerPress={undefined}
             onImagePress={handleImagePress}
           />
@@ -451,6 +457,7 @@ const MainScreen = () => {
           <PreviewCard
             label="After"
             uri={processedImage}
+            mediaType="image"
             placeholder={selectedImage ? '変換後' : '—'}
             onPickerPress={undefined}
             onImagePress={handleImagePress}
@@ -461,6 +468,7 @@ const MainScreen = () => {
         <ImagePickerComponent
           onImageSelect={handleImageSelect}
           selectedImage={selectedImage || undefined}
+          selectedMediaType={selectedMediaType ?? undefined}
         />
 
         {/* ── File Info (#97) ── */}
@@ -495,6 +503,13 @@ const MainScreen = () => {
           <Text style={styles.axisHeaderText}>⚡ ガビガビ化</Text>
           <View style={styles.axisHeaderLine} />
         </View>
+
+        {/* #80: video not supported notice */}
+        {selectedMediaType === 'video' && (
+          <View style={styles.videoNoticeCard}>
+            <Text style={styles.videoNoticeText}>🎬 動画のガビガビ化は今後対応予定です</Text>
+          </View>
+        )}
 
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
@@ -586,9 +601,9 @@ const MainScreen = () => {
         {/* ── Action Buttons ── */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            style={[styles.processButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
             onPress={handleProcess}
-            disabled={!selectedImage || isProcessing}
+            disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
             activeOpacity={0.8}>
             {isProcessing && processingAction === 'gabigabi' ? (
               <View style={styles.processingRow}>
@@ -601,9 +616,9 @@ const MainScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.convertButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            style={[styles.convertButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
             onPress={handleConvert}
-            disabled={!selectedImage || isProcessing}
+            disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
             activeOpacity={0.8}>
             {processingAction === 'convert' ? (
               <View style={styles.processingRow}>
@@ -618,9 +633,9 @@ const MainScreen = () => {
 
         {/* ── Discord Compress Button ── */}
         <TouchableOpacity
-          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+          style={[styles.discordButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
           onPress={handleDiscordCompress}
-          disabled={!selectedImage || isProcessing}
+          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
           activeOpacity={0.8}>
           {processingAction === 'discord' ? (
             <View style={styles.processingRow}>
@@ -680,21 +695,29 @@ const MainScreen = () => {
 interface PreviewCardProps {
   label: string;
   uri: string | null;
+  mediaType?: 'image' | 'video';
   placeholder: string;
   onPickerPress?: () => void;
   onImagePress?: (uri: string | null) => void;
 }
 
-const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, placeholder, onImagePress}) => (
+const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image', placeholder, onImagePress}) => (
   <View style={styles.previewCard}>
     <Text style={styles.previewLabel}>{label}</Text>
     {uri ? (
-      <TouchableOpacity onPress={() => onImagePress?.(uri)} activeOpacity={0.85}>
-        <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
-        <View style={styles.previewTapHint}>
-          <Text style={styles.previewTapHintText}>🔍 タップで拡大</Text>
+      mediaType === 'video' ? (
+        <View style={[styles.previewEmpty, styles.videoPreview]}>
+          <Text style={styles.videoPreviewIcon}>🎬</Text>
+          <Text style={styles.videoPreviewText}>動画</Text>
         </View>
-      </TouchableOpacity>
+      ) : (
+        <TouchableOpacity onPress={() => onImagePress?.(uri)} activeOpacity={0.85}>
+          <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
+          <View style={styles.previewTapHint}>
+            <Text style={styles.previewTapHintText}>🔍 タップで拡大</Text>
+          </View>
+        </TouchableOpacity>
+      )
     ) : (
       <View style={styles.previewEmpty}>
         <Text style={styles.previewEmptyText}>{placeholder}</Text>
@@ -1073,6 +1096,37 @@ const styles = StyleSheet.create({
   },
   axisHeaderTextConvert: {
     color: ACCENT2,
+  },
+
+  /* video notice (#80) */
+  videoNoticeCard: {
+    backgroundColor: '#1e1a10',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ff9800',
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  videoNoticeText: {
+    fontSize: 14,
+    color: '#ff9800',
+    fontWeight: '700',
+  },
+
+  /* video preview (#80) */
+  videoPreview: {
+    backgroundColor: '#111',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  videoPreviewIcon: {
+    fontSize: 40,
+  },
+  videoPreviewText: {
+    fontSize: 12,
+    color: TEXT_SECONDARY,
   },
 });
 

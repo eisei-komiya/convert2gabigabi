@@ -1,10 +1,11 @@
 import React from 'react';
-import {View, TouchableOpacity, Text, StyleSheet, Image, Alert} from 'react-native';
+import {View, TouchableOpacity, Text, StyleSheet, Alert} from 'react-native';
 import * as ExpoImagePicker from 'expo-image-picker';
 
 interface ImagePickerProps {
-  onImageSelect: (imageUri: string) => void;
+  onImageSelect: (imageUri: string, mediaType: 'image' | 'video') => void;
   selectedImage?: string;
+  selectedMediaType?: 'image' | 'video';
 }
 
 const ACCENT = '#ff4e50';
@@ -15,6 +16,7 @@ const TEXT_SECONDARY = '#888';
 const ImagePicker: React.FC<ImagePickerProps> = ({
   onImageSelect,
   selectedImage,
+  selectedMediaType,
 }) => {
   const handlePress = async () => {
     const { status } = await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
@@ -23,23 +25,33 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
       return;
     }
     const result = await ExpoImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ['images', 'videos'],
       allowsEditing: false,
       quality: 1,
     });
     if (!result.canceled && result.assets[0]) {
-      onImageSelect(result.assets[0].uri);
+      const asset = result.assets[0];
+      const isVideo =
+        asset.type === 'video' ||
+        /\.(mp4|mov|avi|mkv|webm|m4v|3gp|flv|wmv)$/i.test(asset.uri);
+      onImageSelect(asset.uri, isVideo ? 'video' : 'image');
     }
   };
+
+  const isVideo = selectedMediaType === 'video';
 
   return (
     <TouchableOpacity
       style={[styles.button, selectedImage && styles.buttonSelected]}
       onPress={handlePress}
       activeOpacity={0.7}>
-      <Text style={styles.icon}>🖼️</Text>
+      <Text style={styles.icon}>{isVideo ? '🎬' : '🖼️'}</Text>
       <Text style={styles.buttonText}>
-        {selectedImage ? '画像を変更する' : '画像を選択する'}
+        {selectedImage
+          ? isVideo
+            ? '動画を変更する'
+            : '画像を変更する'
+          : '画像 / 動画を選択する'}
       </Text>
       {!selectedImage && (
         <Text style={styles.hint}>タップしてギャラリーを開く</Text>
