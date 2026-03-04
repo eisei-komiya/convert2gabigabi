@@ -18,14 +18,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.eiseikomiya.convert2gabigabi"
+      "bundleIdentifier": "com.convert2gabigabi"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.eiseikomiya.convert2gabigabi"
+      "package": "com.convert2gabigabi"
     },
     "web": {
       "favicon": "./assets/favicon.png",
