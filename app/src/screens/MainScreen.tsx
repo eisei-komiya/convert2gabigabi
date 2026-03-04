@@ -1039,18 +1039,11 @@ const styles = StyleSheet.create({
 
   /* floating action area (#112) */
   floatingArea: {
-    backgroundColor: CARD_BG,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 32,
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: -4},
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
   },
 
   /* file info (#97) */
