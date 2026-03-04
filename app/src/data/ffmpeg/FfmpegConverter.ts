@@ -15,6 +15,29 @@ export interface FfmpegConvertResult {
   outputBytes: number;
 }
 
+const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
+
+/**
+ * キャッシュディレクトリ内の古い一時出力ファイル（_compressed_, _gabigabi_, _converted_ を含むもの）を削除する。
+ */
+async function cleanupCachedTempFiles(): Promise<void> {
+  try {
+    const cacheDirUri = Paths.cache.uri;
+    const cacheDir = cacheDirUri.endsWith('/') ? cacheDirUri : cacheDirUri + '/';
+    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+    if (!dirInfo.exists) return;
+    const result = await FileSystem.readDirectoryAsync(cacheDir);
+    const tempPattern = /_(compressed|gabigabi|converted)_/;
+    await Promise.all(
+      result
+        .filter(name => tempPattern.test(name))
+        .map(name => FileSystem.deleteAsync(cacheDir + name, { idempotent: true })),
+    );
+  } catch {
+    // クリーンアップ失敗は無視して処理を続行する
+  }
+}
+
 /**
  * FFmpegを使って画像フォーマットを変換する。
  * JPEG, PNG, WebP への出力に対応。
@@ -26,6 +49,22 @@ export async function convertImage(
   inputUri: string,
   options: ConvertOptions,
 ): Promise<FfmpegConvertResult> {
+  // 入力ファイルの存在確認とサイズチェック
+  const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
+  if (!inputInfo.exists) {
+    throw new Error('入力ファイルが存在しません');
+  }
+  const inputBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  if (inputBytes === 0) {
+    throw new Error('入力ファイルが空（0バイト）です');
+  }
+  if (inputBytes > MAX_INPUT_BYTES) {
+    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
+  }
+
+  // 前回の一時ファイルをクリーンアップ
+  await cleanupCachedTempFiles();
+
   const { outputFormat, quality = 85 } = options;
 
   const inputPath = inputUri.replace('file://', '');

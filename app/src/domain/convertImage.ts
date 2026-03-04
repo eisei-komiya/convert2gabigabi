@@ -1,4 +1,4 @@
-import { convertImage, ImageFormat, ConvertOptions, FfmpegConvertResult } from '../data/ffmpeg/FfmpegConverter';
+import { convertImage as ffmpegConvertImage, ImageFormat, ConvertOptions, FfmpegConvertResult } from '../data/ffmpeg/FfmpegConverter';
 
 export type { ImageFormat };
 
@@ -15,11 +15,11 @@ export interface ConvertImageResult {
  * @param inputUri   入力画像のファイルURI
  * @param options    変換オプション（フォーマット・品質）
  */
-export async function useConvertImage(
+export async function convertImage(
   inputUri: string,
   options: ConvertOptions,
 ): Promise<ConvertImageResult> {
-  const result: FfmpegConvertResult = await convertImage(inputUri, options);
+  const result: FfmpegConvertResult = await ffmpegConvertImage(inputUri, options);
   return {
     outputUri: result.outputUri,
     outputBytes: result.outputBytes,

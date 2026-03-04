@@ -10,6 +10,7 @@ export interface CompressResult {
 }
 
 const DISCORD_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * ファイルの拡張子から動画かどうかを判定する。
@@ -40,6 +41,27 @@ async function getVideoDurationSec(inputPath: string): Promise<number> {
 }
 
 /**
+ * キャッシュディレクトリ内の古い一時出力ファイル（_compressed_, _gabigabi_, _converted_ を含むもの）を削除する。
+ */
+async function cleanupCachedTempFiles(): Promise<void> {
+  try {
+    const cacheDirUri = Paths.cache.uri;
+    const cacheDir = cacheDirUri.endsWith('/') ? cacheDirUri : cacheDirUri + '/';
+    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+    if (!dirInfo.exists) return;
+    const result = await FileSystem.readDirectoryAsync(cacheDir);
+    const tempPattern = /_(compressed|gabigabi|converted)_/;
+    await Promise.all(
+      result
+        .filter(name => tempPattern.test(name))
+        .map(name => FileSystem.deleteAsync(cacheDir + name, { idempotent: true })),
+    );
+  } catch {
+    // クリーンアップ失敗は無視して処理を続行する
+  }
+}
+
+/**
  * 画像を指定バイト数以下に圧縮する（JPEG品質をバイナリサーチ）。
  *
  * @param inputUri    入力画像ファイルURI
@@ -51,9 +73,23 @@ async function compressImageToTarget(
   targetBytes: number,
   forceJpeg: boolean = false,
 ): Promise<CompressResult> {
+  // 入力ファイルの存在確認とサイズチェック
+  const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
+  if (!inputInfo.exists) {
+    throw new Error('入力ファイルが存在しません');
+  }
+  const originalBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  if (originalBytes === 0) {
+    throw new Error('入力ファイルが空（0バイト）です');
+  }
+  if (originalBytes > MAX_INPUT_BYTES) {
+    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
+  }
+
+  // 前回の一時ファイルをクリーンアップ
+  await cleanupCachedTempFiles();
+
   const inputPath = inputUri.replace('file://', '');
-  const info = await FileSystem.getInfoAsync(inputUri, { size: true });
-  const originalBytes = (info as FileSystem.FileInfo & { size: number }).size ?? 0;
 
   if (originalBytes <= targetBytes) {
     return {
@@ -145,9 +181,23 @@ async function compressVideoToTarget(
   inputUri: string,
   targetBytes: number,
 ): Promise<CompressResult> {
+  // 入力ファイルの存在確認とサイズチェック
+  const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
+  if (!inputInfo.exists) {
+    throw new Error('入力ファイルが存在しません');
+  }
+  const originalBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  if (originalBytes === 0) {
+    throw new Error('入力ファイルが空（0バイト）です');
+  }
+  if (originalBytes > MAX_INPUT_BYTES) {
+    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
+  }
+
+  // 前回の一時ファイルをクリーンアップ
+  await cleanupCachedTempFiles();
+
   const inputPath = inputUri.replace('file://', '');
-  const info = await FileSystem.getInfoAsync(inputUri, { size: true });
-  const originalBytes = (info as FileSystem.FileInfo & { size: number }).size ?? 0;
 
   if (originalBytes <= targetBytes) {
     return {
@@ -236,3 +286,4 @@ export async function compressToTargetSize(
     return compressImageToTarget(inputUri, targetBytes);
   }
 }
+
