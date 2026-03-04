@@ -26,6 +26,7 @@ import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
 import {FFmpegKit} from 'ffmpeg-kit-react-native';
+import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
@@ -41,6 +42,16 @@ const GABIGABI_LEVELS: {label: string; value: number}[] = [
   {label: '4', value: 4},
   {label: '5', value: 5},
 ];
+
+// テンプレートレベルに対応する設定値
+const TEMPLATE_SETTINGS: Record<number, {resizePercent: number; convertQuality: number}> = {
+  0: {resizePercent: 100, convertQuality: 2},
+  1: {resizePercent: 100, convertQuality: 18},
+  2: {resizePercent: 75,  convertQuality: 23},
+  3: {resizePercent: 50,  convertQuality: 27},
+  4: {resizePercent: 25,  convertQuality: 29},
+  5: {resizePercent: 25,  convertQuality: 31},
+};
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
@@ -275,8 +286,27 @@ const MainScreen = () => {
   const handleResizeChange = useCallback(
     (percent: number) => {
       setResizePercent(percent);
+      setGabigabiLevel(null);
     },
-    [setResizePercent],
+    [setResizePercent, setGabigabiLevel],
+  );
+
+  const handleQualityChange = useCallback(
+    (quality: number) => {
+      setConvertQuality(quality);
+      setGabigabiLevel(null);
+    },
+    [setConvertQuality, setGabigabiLevel],
+  );
+
+  const handleTemplateSelect = useCallback(
+    (level: number) => {
+      const settings = TEMPLATE_SETTINGS[level];
+      setGabigabiLevel(level);
+      setResizePercent(settings.resizePercent);
+      setConvertQuality(settings.convertQuality);
+    },
+    [setGabigabiLevel, setResizePercent, setConvertQuality],
   );
 
   // #77: open fullscreen
@@ -353,14 +383,15 @@ const MainScreen = () => {
     if (!processedImage) {
       return;
     }
-    const {status} = await MediaLibrary.requestPermissionsAsync();
+    // #125: Use granularPermissions to request only photo access (avoids spurious music permission on Android 13+)
+    const {status} = await MediaLibrary.requestPermissionsAsync(false, ['photo']);
     if (status !== 'granted') {
       Alert.alert('権限が必要', 'カメラロールへのアクセスを許可してください');
       return;
     }
     try {
       await MediaLibrary.saveToLibraryAsync(processedImage);
-      Alert.alert('保存完了', 'カメラロールに保存しました');
+      // #125: Removed confirmation dialog — save completes silently to avoid camera roll opening
     } catch (err) {
       showError('エラー', `保存に失敗しました: ${String(err)}`);
     }
