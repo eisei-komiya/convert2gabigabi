@@ -1,6 +1,8 @@
 import {create} from 'zustand';
 import { ImageFormat } from '../domain/convertImage';
 
+export type VideoFormat = 'mp4' | 'avi' | 'wmv' | 'mov' | 'mpg' | 'mkv' | 'webm';
+
 interface AppState {
   selectedImage: string | null;
   resizePercent: number;
@@ -9,6 +11,7 @@ interface AppState {
   outputFormat: ImageFormat;
   convertQuality: number;
   gabigabiLevel: number | null;
+  videoOutputFormat: VideoFormat;
   setSelectedImage: (image: string | null) => void;
   setResizePercent: (percent: number) => void;
   setProcessedImage: (image: string | null) => void;
@@ -16,6 +19,7 @@ interface AppState {
   setOutputFormat: (format: ImageFormat) => void;
   setConvertQuality: (quality: number) => void;
   setGabigabiLevel: (level: number | null) => void;
+  setVideoOutputFormat: (format: VideoFormat) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -26,6 +30,7 @@ export const useAppStore = create<AppState>(set => ({
   outputFormat: 'jpeg',
   convertQuality: 85,
   gabigabiLevel: null,
+  videoOutputFormat: 'mp4',
   setSelectedImage: image => set({selectedImage: image}),
   setResizePercent: percent => set({resizePercent: percent}),
   setProcessedImage: image => set({processedImage: image}),
@@ -33,4 +38,5 @@ export const useAppStore = create<AppState>(set => ({
   setOutputFormat: format => set({outputFormat: format}),
   setConvertQuality: quality => set({convertQuality: quality}),
   setGabigabiLevel: level => set({gabigabiLevel: level}),
+  setVideoOutputFormat: format => set({videoOutputFormat: format}),
 }));
