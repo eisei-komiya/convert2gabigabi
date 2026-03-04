@@ -1,6 +1,7 @@
 import { Paths } from 'expo-file-system';
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp';
 
@@ -39,7 +40,7 @@ export async function convertImage(
   const ext = extMap[outputFormat];
   const cacheDirUri = Paths.cache.uri;
   const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
-  const suffix = Date.now();
+  const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_converted_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
 
@@ -77,7 +78,7 @@ export async function convertImage(
   const rc = await session.getReturnCode();
 
   if (!ReturnCode.isSuccess(rc)) {
-    const logs = await session.getAllLogsAsString();
+    const logs = await extractErrorFromLogs(session);
     throw new Error(`FFmpegフォーマット変換に失敗しました: ${logs}`);
   }
 

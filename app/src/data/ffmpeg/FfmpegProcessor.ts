@@ -1,6 +1,7 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
 export interface FfmpegProcessResult {
   outputUri: string;
@@ -55,7 +56,7 @@ export async function processWithFfmpeg(
   // PNG はロスレスなので -q:v が無効になる。JPEG に変換して品質劣化を有効にする。
   const ext = inputExt === '.png' ? '.jpg' : inputExt;
   const cacheDir = getCacheDir();
-  const suffix = Date.now();
+  const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
 
@@ -80,7 +81,7 @@ export async function processWithFfmpeg(
   const rc = await session.getReturnCode();
 
   if (!ReturnCode.isSuccess(rc)) {
-    const logs = await session.getAllLogsAsString();
+    const logs = await extractErrorFromLogs(session);
     throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
   }
 
