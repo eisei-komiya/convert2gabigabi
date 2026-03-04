@@ -564,11 +564,7 @@ const MainScreen = () => {
         {/* ── Settings ── */}
 
         {/* #80: video not supported notice */}
-        {selectedMediaType === 'video' && (
-          <View style={styles.videoNoticeCard}>
-            <Text style={styles.videoNoticeText}>🎬 動画のガビガビ化は今後対応予定です</Text>
-          </View>
-        )}
+        {/* #110: 動画ガビガビ化対応済み — 通知削除 */}
 
         {/* ── Resize Slider ── */}
         <View style={styles.sliderCard}>
