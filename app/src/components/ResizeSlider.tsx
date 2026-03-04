@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {View, Text, StyleSheet, TextInput, TouchableOpacity} from 'react-native';
 
 interface ResizeSliderProps {
@@ -16,10 +16,22 @@ const INPUT_BG = '#111';
 const PRESETS = [25, 50, 75];
 
 const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange}) => {
+  const [inputText, setInputText] = useState(value.toString());
+
+  useEffect(() => {
+    setInputText(value.toString());
+  }, [value]);
+
   const handleTextChange = (text: string) => {
-    const numValue = parseFloat(text);
+    setInputText(text);
+  };
+
+  const handleBlur = () => {
+    const numValue = parseFloat(inputText);
     if (!isNaN(numValue) && numValue > 0 && numValue <= 100) {
       onValueChange(numValue);
+    } else {
+      setInputText(value.toString());
     }
   };
 
@@ -54,8 +66,9 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange}) => {
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
-            value={value.toString()}
+            value={inputText}
             onChangeText={handleTextChange}
+            onBlur={handleBlur}
             keyboardType="numeric"
             placeholder="1〜100"
             placeholderTextColor={TEXT_SECONDARY}
