@@ -1,4 +1,4 @@
-package com.eiseikomiya.convert2gabigabi
+package com.convert2gabigabi
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
