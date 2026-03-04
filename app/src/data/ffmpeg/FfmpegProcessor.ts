@@ -1,5 +1,6 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface FfmpegProcessResult {
   outputUri: string;
@@ -18,42 +19,18 @@ const GABIGABI_QUALITY: Record<number, number> = {
 };
 
 /**
- * FFmpegのログから実際のエラーメッセージを抽出する。
- * バージョンバナーや設定情報を除き、エラー行のみ返す。
+ * アプリのキャッシュディレクトリパスを取得する。
+ * 新API (Paths.cache) を使用。
  */
-function extractErrorFromLogs(logs: string): string {
-  const errorLines = logs
-    .split('\n')
-    .filter(line => {
-      const lower = line.toLowerCase();
-      return (
-        lower.includes('error') ||
-        lower.includes('invalid') ||
-        lower.includes('no such file') ||
-        lower.includes('not found') ||
-        lower.includes('failed') ||
-        lower.includes('unable') ||
-        lower.includes('cannot') ||
-        lower.includes('unrecognized') ||
-        lower.includes('unknown')
-      );
-    })
-    .filter(line => !line.startsWith('ffmpeg version') && !line.startsWith('  '))
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
-
-  if (errorLines.length > 0) {
-    return errorLines.slice(0, 3).join(' | ');
-  }
-
-  const trimmed = logs.trim();
-  return trimmed.length > 200 ? '...' + trimmed.slice(-200) : trimmed;
+function getCacheDir(): string {
+  const dir = Paths.cache.uri;
+  // uri は "file:///data/..." 形式
+  return dir.endsWith('/') ? dir : dir + '/';
 }
 
 /**
  * FFmpegを使って画像をガビガビ化する。
  * スケール縮小 + 低品質JPEG圧縮でガビガビ効果を出す。
- * 出力は常にJPEG（PNG入力でも）— JPEGのみ -q:v で品質制御が有効なため。
  *
  * @param inputUri   入力画像のファイルURI
  * @param scalePct   縮小率（1〜100 %）
@@ -74,21 +51,26 @@ export async function processWithFfmpeg(
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
   const stem = fileName.replace(/\.[^.]+$/, '');
-  const cacheDir = FileSystem.cacheDirectory ?? 'file:///tmp/';
-  const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  // ガビガビ化は常にJPEG出力（PNG入力でも）。JPEGのみ -q:v で品質劣化が有効。
-  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.jpg`;
+  const ext = fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg';
+  const cacheDir = getCacheDir();
+  const suffix = Date.now();
+  const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
+
+  console.log('[FFmpeg] outputPath:', outputPath);
 
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
   const scale = scalePct / 100;
 
   // -vf scale でリサイズ、-q:v でJPEG品質を下げてガビガビ化
+  // -update 1 -frames:v 1: image2 muxer で単一画像出力に必要
   const cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-vf', `"scale=iw*${scale}:ih*${scale}"`,
     '-q:v', String(quality),
+    '-update', '1',
+    '-frames:v', '1',
     `"${outputPath}"`,
   ].join(' ');
 
@@ -97,8 +79,7 @@ export async function processWithFfmpeg(
 
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await session.getAllLogsAsString();
-    const errorSummary = extractErrorFromLogs(logs);
-    throw new Error(`FFmpeg処理に失敗しました: ${errorSummary}`);
+    throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
