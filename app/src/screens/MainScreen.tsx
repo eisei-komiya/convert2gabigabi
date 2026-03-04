@@ -931,7 +931,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 12,
     shadowColor: ACCENT,
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
@@ -955,7 +954,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 12,
     shadowColor: '#5865F2',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
@@ -1036,6 +1034,22 @@ const styles = StyleSheet.create({
 
   spacer: {
     height: 20,
+  },
+
+  /* floating action area (#112) */
+  floatingArea: {
+    backgroundColor: CARD_BG,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: -4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
   },
 
   /* file info (#97) */
