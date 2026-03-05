@@ -785,7 +785,10 @@ const MainScreen = () => {
         </View>
         {/* ── Shrink→Expand Section ── */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>縮小→再拡大</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>縮小→再拡大</Text>
+            <Text style={styles.sectionHint}>画像を一度縮小して元サイズに戻す。{'\n'}引き伸ばしでブロックノイズが増幅されガビガビに</Text>
+          </View>
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>ON/OFF</Text>
             <Switch
@@ -818,7 +821,10 @@ const MainScreen = () => {
 
         {/* ── Multi-Compress Section ── */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>多重圧縮</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>多重圧縮</Text>
+            <Text style={styles.sectionHint}>JPEG圧縮を繰り返すほど劣化が蓄積。{'\n'}回数が多いほどガビガビに</Text>
+          </View>
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>ON/OFF</Text>
             <Switch
@@ -1123,7 +1129,21 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     textTransform: 'uppercase',
     letterSpacing: 1,
+    marginBottom: 0,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  sectionHint: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+    lineHeight: 14,
   },
   formatRow: {
     flexDirection: 'row',
