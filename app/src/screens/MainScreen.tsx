@@ -518,7 +518,7 @@ const MainScreen = () => {
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>ライセンス: GPL v3</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>FFmpeg / FFmpegKit を使用しています</Text>
             <TouchableOpacity onPress={() => { Linking.openURL('https://github.com/eisei-komiya/convert2gabigabi'); }}>
-              <Text style={{color: '#4da6ff', fontSize: 14, marginBottom: 16}}>📦 GitHub でソースコードを見る</Text>
+              <Text style={{color: '#4da6ff', fontSize: 14, marginBottom: 16}}>GitHub でソースコードを見る</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setAboutVisible(false)} style={{backgroundColor: '#333', borderRadius: 8, padding: 12, alignItems: 'center'}}>
               <Text style={{color: '#fff', fontSize: 16}}>閉じる</Text>
@@ -546,9 +546,9 @@ const MainScreen = () => {
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
                 <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {fileInfo.name}</Text>
-                <Text style={styles.infoText}>💾 {fileInfo.size}</Text>
+                <Text style={styles.infoText}>{fileInfo.size}</Text>
                 {fileInfo.width > 0 && (
-                  <Text style={styles.infoText}>🖼 {fileInfo.width} × {fileInfo.height} px</Text>
+                  <Text style={styles.infoText}>{fileInfo.width} × {fileInfo.height} px</Text>
                 )}
                 <Text style={styles.infoText}>🏷 {(fileInfo.name.split('.').pop() ?? '').toUpperCase()}</Text>
               </View>
@@ -569,8 +569,8 @@ const MainScreen = () => {
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
                 <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + (outputFormat === 'jpeg' ? 'jpg' : outputFormat)) : '—'}</Text>
-                <Text style={styles.infoText}>💾 {processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
-                <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
+                <Text style={styles.infoText}>{processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
+                <Text style={styles.infoText}>{Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
                 <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
               </View>
             )}
@@ -659,7 +659,7 @@ const MainScreen = () => {
           {selectedMediaType !== 'video' && (
             <>
               {selectedMediaType === null && (
-                <Text style={[styles.formatGroupLabel, {marginTop: 12}]}>🖼 画像</Text>
+                <Text style={[styles.formatGroupLabel, {marginTop: 12}]}>画像</Text>
               )}
               <View style={styles.formatRow}>
                 {FORMAT_OPTIONS.map(opt => (
@@ -735,7 +735,7 @@ const MainScreen = () => {
               style={[styles.saveButton]}
               onPress={handleSave}
               activeOpacity={0.8}>
-              <Text style={styles.buttonText}>💾 カメラロールに保存</Text>
+              <Text style={styles.buttonText}>カメラロールに保存</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -759,7 +759,7 @@ const MainScreen = () => {
               <Text style={styles.buttonText}> 処理中...</Text>
             </View>
           ) : (
-            <Text style={styles.buttonText}>🔄 変換</Text>
+            <Text style={styles.buttonText}>変換</Text>
           )}
         </TouchableOpacity>
 
@@ -774,7 +774,7 @@ const MainScreen = () => {
               <Text style={styles.buttonText}> 処理中...</Text>
             </View>
           ) : (
-            <Text style={styles.buttonText}>📤 Discord用に10MB以下にクイック圧縮</Text>
+            <Text style={styles.buttonText}>Discord用に10MB以下にクイック圧縮</Text>
           )}
         </TouchableOpacity>
       </View>
