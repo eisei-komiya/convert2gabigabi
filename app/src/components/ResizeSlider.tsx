@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import {View, Text, TextInput, StyleSheet, TouchableOpacity} from 'react-native';
-import Slider from '@react-native-community/slider';
+import CustomSlider from './CustomSlider';
 
 interface ResizeSliderProps {
   value: number;
@@ -68,7 +68,7 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
       </View>
 
       {/* Slider */}
-      <Slider
+      <CustomSlider
         style={styles.slider}
         minimumValue={1}
         maximumValue={100}

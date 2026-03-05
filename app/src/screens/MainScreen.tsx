@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import Slider from '@react-native-community/slider';
+import CustomSlider from '../components/CustomSlider';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   SafeAreaView,
@@ -689,7 +689,7 @@ const MainScreen = () => {
                 <Text style={styles.qualityLabel}>JPEG品質</Text>
                 <Text style={styles.qualityValue}>{convertQuality}</Text>
               </View>
-              <Slider
+              <CustomSlider
                 style={styles.qualitySlider}
                 minimumValue={1}
                 maximumValue={100}
