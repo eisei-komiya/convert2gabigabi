@@ -494,15 +494,14 @@ const MainScreen = () => {
     if (!processedImage) {
       return;
     }
-    // #125: Use granularPermissions to request only photo access (avoids spurious music permission on Android 13+)
     const {status} = await MediaLibrary.requestPermissionsAsync(false, ['photo']);
     if (status !== 'granted') {
       Alert.alert('権限が必要', 'カメラロールへのアクセスを許可してください');
       return;
     }
     try {
-      await MediaLibrary.saveToLibraryAsync(processedImage);
-      // #125: Removed confirmation dialog — save completes silently to avoid camera roll opening
+      // createAssetAsync はギャラリーを開かずにメディアストアに登録する
+      await MediaLibrary.createAssetAsync(processedImage);
     } catch (err) {
       showError('エラー', `保存に失敗しました: ${String(err)}`);
     }
