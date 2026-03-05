@@ -587,24 +587,27 @@ const MainScreen = () => {
         {/* ── Template Section (旧ガビガビレベル) ── */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>テンプレート</Text>
-          <View style={styles.formatRow}>
-            {GABIGABI_LEVELS.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                style={[
-                  styles.formatButton,
-                  gabigabiLevel === item.value && styles.gabigabiButtonActive,
-                ]}
-                onPress={() => handleTemplateSelect(item.value)}>
-                <Text
+          <View style={styles.templateBlock}>
+            <Text style={styles.templateBlockLabel}>ガビガビレベル</Text>
+            <View style={styles.formatRow}>
+              {GABIGABI_LEVELS.map(item => (
+                <TouchableOpacity
+                  key={item.value}
                   style={[
-                    styles.formatButtonText,
-                    gabigabiLevel === item.value && styles.formatButtonTextActive,
-                  ]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                    styles.formatButton,
+                    gabigabiLevel === item.value && styles.gabigabiButtonActive,
+                  ]}
+                  onPress={() => handleTemplateSelect(item.value)}>
+                  <Text
+                    style={[
+                      styles.formatButtonText,
+                      gabigabiLevel === item.value && styles.formatButtonTextActive,
+                    ]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -982,6 +985,19 @@ const styles = StyleSheet.create({
   },
   formatRowWrap: {
     flexWrap: 'wrap',
+  },
+  templateBlock: {
+    backgroundColor: CARD_BG,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 12,
+  },
+  templateBlockLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+    marginBottom: 8,
   },
   formatGroupLabel: {
     fontSize: 12,
