@@ -1,7 +1,7 @@
 import {create} from 'zustand';
 import { ImageFormat } from '../domain/convertImage';
 
-export type VideoFormat = 'mp4' | 'avi' | 'wmv' | 'mov' | 'mkv' | 'webm';
+export type VideoFormat = 'mp4' | 'mov' | 'mkv' | 'webm';
 
 interface AppState {
   selectedImage: string | null;

@@ -43,8 +43,6 @@ const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
 
 const VIDEO_FORMAT_OPTIONS: {label: string; value: VideoFormat}[] = [
   {label: 'MP4', value: 'mp4'},
-  {label: 'AVI', value: 'avi'},
-  {label: 'WMV', value: 'wmv'},
   {label: 'MOV', value: 'mov'},
   {label: 'MKV', value: 'mkv'},
   {label: 'WebM', value: 'webm'},
@@ -514,7 +512,7 @@ const MainScreen = () => {
     try {
       const filePath = processedImage.replace('file://', '');
       const ext = filePath.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const videoExts = ['mp4', 'avi', 'wmv', 'mov', 'mkv', 'webm'];
+      const videoExts = ['mp4', 'mov', 'mkv', 'webm'];
       const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'bmp' ? 'image/bmp' : ext === 'gif' ? 'image/gif' : videoExts.includes(ext) ? 'video/' + ext : 'image/jpeg';
       await Share.open({
         url: `file://${filePath}`,

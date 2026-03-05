@@ -89,8 +89,6 @@ const GABIGABI_CRF: Record<number, number> = {
  */
 const VIDEO_FORMAT_CODECS: Record<VideoFormat, string[]> = {
   mp4:  ['-c:v', 'libx264', '-c:a', 'aac'],
-  avi:  ['-c:v', 'libx264', '-c:a', 'mp3'],
-  wmv:  ['-c:v', 'wmv2', '-c:a', 'wmav2'],
   mov:  ['-c:v', 'libx264', '-c:a', 'aac'],
   mkv:  ['-c:v', 'libx264', '-c:a', 'aac'],
   webm: ['-c:v', 'libvpx-vp9', '-c:a', 'libvorbis'],
@@ -137,7 +135,7 @@ export async function processVideoWithFfmpeg(
 
   // フォーマットに応じた品質パラメータを選択する
   // - libvpx-vp9 (webm): -crf + -b:v 0 (constrained quality mode)
-  // - libx264 / wmv2: -crf
+  // - libx264: -crf
   let qualityArgs: string[];
   if (outputFormat === 'webm') {
     qualityArgs = ['-crf', String(crf), '-b:v', '0'];
