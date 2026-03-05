@@ -4,14 +4,14 @@
 
 | 機能 | 説明 |
 |---|---|
-| 🖼️ ガビガビ化 | 指定した縮小率とガビガビレベルで画像を低解像度に変換 |
-| 🔄 フォーマット変換 | JPEG / PNG / WebP への変換 + 品質指定 |
-| 📦 Discord圧縮 | ファイルを10MB以下に自動圧縮 |
-| 💾 保存 / 共有 | 変換後の画像をギャラリー保存またはシェア |
+| ガビガビ化 | 指定した縮小率とガビガビレベルで画像を低解像度に変換 |
+| フォーマット変換 | JPEG / PNG / WebP への変換 + 品質指定 |
+| Discord圧縮 | ファイルを10MB以下に自動圧縮 |
+| 保存 / 共有 | 変換後の画像をギャラリー保存またはシェア |
 
 ---
 
-## 📱 セットアップ・ビルド
+## セットアップ・ビルド
 
 初回ビルドや Android 実機での開発手順は [`docs/local-dev-android.md`](docs/local-dev-android.md) を参照してください。
 
@@ -32,7 +32,7 @@ npx expo run:android
 npx react-native start
 ```
 
-> ⚠️ このアプリは `expo-dev-client` を使っているため **Expo Goでは動作しません**。
+> このアプリは `expo-dev-client` を使っているため **Expo Goでは動作しません**。
 > 必ず `npx expo run:android` でカスタム dev client をビルドしてください。
 
 ### EAS Build（実機配布用）
@@ -46,7 +46,7 @@ eas build --profile preview --platform android
 
 ---
 
-## 📁 プロジェクト構成
+## プロジェクト構成
 
 ```
 convert2gabigabi/
@@ -80,7 +80,7 @@ convert2gabigabi/
 
 ---
 
-## 🏗️ アーキテクチャ
+## アーキテクチャ
 
 **Clean Architecture** を採用:
 
@@ -101,7 +101,7 @@ data/ffmpeg    data/native
 
 ---
 
-## 🔧 技術スタック
+## 技術スタック
 
 | カテゴリ | 採用技術 |
 |---|---|
@@ -116,6 +116,6 @@ data/ffmpeg    data/native
 
 ---
 
-## 🤝 開発参加
+## 開発参加
 
 コードベースの詳細・開発ルールは [`GEMINI.md`](GEMINI.md) を参照してください。
