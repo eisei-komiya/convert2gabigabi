@@ -16,19 +16,21 @@ const TEXT_SECONDARY = '#888';
 const BORDER = '#2a2a2a';
 const INPUT_BG = '#111';
 
+type TabMode = 'percent' | 'resolution';
+
 const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, originalWidth, originalHeight}) => {
   const hasOriginal = originalWidth != null && originalHeight != null && originalWidth > 0 && originalHeight > 0;
-  const [directMode, setDirectMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabMode>('percent');
   const [widthText, setWidthText] = useState('');
   const [heightText, setHeightText] = useState('');
 
   // Sync direct inputs when value or original dimensions change
   useEffect(() => {
-    if (hasOriginal && directMode) {
+    if (hasOriginal && activeTab === 'resolution') {
       setWidthText(String(Math.round(originalWidth! * value / 100)));
       setHeightText(String(Math.round(originalHeight! * value / 100)));
     }
-  }, [value, directMode]);
+  }, [value, activeTab]);
 
   const handleWidthChange = (text: string) => {
     setWidthText(text);
@@ -52,67 +54,82 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
 
   return (
     <View style={styles.container}>
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>リサイズ倍率</Text>
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-          {hasOriginal && (
-            <TouchableOpacity onPress={() => setDirectMode(!directMode)} activeOpacity={0.7}>
-              <Text style={styles.modeToggle}>{directMode ? '% 指定' : '解像度指定'}</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.valueDisplay}>
-            <Text style={styles.valueNumber}>{Math.round(value)}</Text>
-            <Text style={styles.valueUnit}>%</Text>
-          </Text>
-        </View>
+      {/* Tab bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'percent' && styles.tabActive]}
+          onPress={() => setActiveTab('percent')}
+          activeOpacity={0.7}>
+          <Text style={[styles.tabText, activeTab === 'percent' && styles.tabTextActive]}>% 指定</Text>
+        </TouchableOpacity>
+        {hasOriginal && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'resolution' && styles.tabActive]}
+            onPress={() => setActiveTab('resolution')}
+            activeOpacity={0.7}>
+            <Text style={[styles.tabText, activeTab === 'resolution' && styles.tabTextActive]}>解像度指定</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Slider */}
-      <CustomSlider
-        style={styles.slider}
-        minimumValue={1}
-        maximumValue={100}
-        step={1}
-        value={value}
-        onValueChange={(v: number) => onValueChange(Math.round(v))}
-        minimumTrackTintColor={ACCENT}
-        maximumTrackTintColor={BORDER}
-        thumbTintColor={ACCENT}
-      />
-
-      {/* Direct resolution input */}
-      {directMode && hasOriginal && (
-        <View style={styles.directRow}>
-          <View style={styles.directInput}>
-            <Text style={styles.directLabel}>幅</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              value={widthText}
-              onChangeText={handleWidthChange}
-              placeholderTextColor="#555"
-            />
+      {/* Percent tab */}
+      {activeTab === 'percent' && (
+        <View style={styles.tabContent}>
+          <View style={styles.percentHeader}>
+            <Text style={styles.label}>リサイズ倍率</Text>
+            <Text style={styles.valueDisplay}>
+              <Text style={styles.valueNumber}>{Math.round(value)}</Text>
+              <Text style={styles.valueUnit}>%</Text>
+            </Text>
           </View>
-          <Text style={styles.directX}>×</Text>
-          <View style={styles.directInput}>
-            <Text style={styles.directLabel}>高さ</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              value={heightText}
-              onChangeText={handleHeightChange}
-              placeholderTextColor="#555"
-            />
-          </View>
-          <Text style={styles.directUnit}>px</Text>
+          <CustomSlider
+            style={styles.slider}
+            minimumValue={1}
+            maximumValue={100}
+            step={1}
+            value={value}
+            onValueChange={(v: number) => onValueChange(Math.round(v))}
+            minimumTrackTintColor={ACCENT}
+            maximumTrackTintColor={BORDER}
+            thumbTintColor={ACCENT}
+          />
+          {hasOriginal && (
+            <Text style={styles.resolutionHint}>
+              → {Math.round(originalWidth! * value / 100)} × {Math.round(originalHeight! * value / 100)} px
+            </Text>
+          )}
         </View>
       )}
 
-      {/* Resolution hint (when not in direct mode) */}
-      {!directMode && hasOriginal && (
-        <Text style={styles.resolutionHint}>
-          → {Math.round(originalWidth! * value / 100)} × {Math.round(originalHeight! * value / 100)} px
-        </Text>
+      {/* Resolution tab */}
+      {activeTab === 'resolution' && hasOriginal && (
+        <View style={styles.tabContent}>
+          <View style={styles.directRow}>
+            <View style={styles.directInput}>
+              <Text style={styles.directLabel}>幅</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={widthText}
+                onChangeText={handleWidthChange}
+                placeholderTextColor="#555"
+              />
+            </View>
+            <Text style={styles.directX}>×</Text>
+            <View style={styles.directInput}>
+              <Text style={styles.directLabel}>高さ</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={heightText}
+                onChangeText={handleHeightChange}
+                placeholderTextColor="#555"
+              />
+            </View>
+            <Text style={styles.directUnit}>px</Text>
+          </View>
+          <Text style={styles.resolutionHint}>= {Math.round(value)}%</Text>
+        </View>
       )}
     </View>
   );
@@ -120,9 +137,36 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 0,
   },
-  labelRow: {
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: INPUT_BG,
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: ACCENT,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: TEXT_SECONDARY,
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
+  tabContent: {
+    gap: 8,
+  },
+  percentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -147,12 +191,6 @@ const styles = StyleSheet.create({
     color: ACCENT2,
     fontWeight: '700',
     marginLeft: 2,
-  },
-  modeToggle: {
-    fontSize: 12,
-    color: ACCENT2,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
   },
   slider: {
     width: '100%',
