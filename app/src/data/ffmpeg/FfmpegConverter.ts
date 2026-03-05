@@ -15,7 +15,6 @@ export interface FfmpegConvertResult {
   outputBytes: number;
 }
 
-const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * キャッシュディレクトリ内の古い一時出力ファイル（_compressed_, _gabigabi_, _converted_ を含むもの）を削除する。
@@ -57,9 +56,6 @@ export async function convertImage(
   const inputBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   if (inputBytes === 0) {
     throw new Error('入力ファイルが空（0バイト）です');
-  }
-  if (inputBytes > MAX_INPUT_BYTES) {
-    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
   }
 
   // 前回の一時ファイルをクリーンアップ
