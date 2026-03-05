@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import Slider from '@react-native-community/slider';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   SafeAreaView,
@@ -681,28 +682,21 @@ const MainScreen = () => {
 
           {selectedMediaType !== 'video' && (outputFormat === 'jpeg' || outputFormat === 'webp') && (
             <View style={styles.qualityRow}>
-              <Text style={styles.qualityLabel}>
-                品質: {convertQuality}%
-              </Text>
-              <View style={styles.qualityButtons}>
-                {[60, 75, 85, 95].map(q => (
-                  <TouchableOpacity
-                    key={q}
-                    style={[
-                      styles.qualityPreset,
-                      convertQuality === q && styles.qualityPresetActive,
-                    ]}
-                    onPress={() => handleQualityChange(q)}>
-                    <Text
-                      style={[
-                        styles.qualityPresetText,
-                        convertQuality === q && styles.qualityPresetTextActive,
-                      ]}>
-                      {q}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.qualityLabelRow}>
+                <Text style={styles.qualityLabel}>JPEG品質</Text>
+                <Text style={styles.qualityValue}>{convertQuality}</Text>
               </View>
+              <Slider
+                style={styles.qualitySlider}
+                minimumValue={1}
+                maximumValue={100}
+                step={1}
+                value={convertQuality}
+                onValueChange={(v: number) => handleQualityChange(Math.round(v))}
+                minimumTrackTintColor={ACCENT2}
+                maximumTrackTintColor={BORDER}
+                thumbTintColor={ACCENT2}
+              />
             </View>
           )}
         </View>
@@ -1023,10 +1017,27 @@ const styles = StyleSheet.create({
   qualityRow: {
     marginTop: 12,
   },
+  qualityLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   qualityLabel: {
     fontSize: 13,
     color: TEXT_SECONDARY,
-    marginBottom: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  qualityValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: ACCENT2,
+  },
+  qualitySlider: {
+    width: '100%',
+    height: 40,
   },
   qualityButtons: {
     flexDirection: 'row',
