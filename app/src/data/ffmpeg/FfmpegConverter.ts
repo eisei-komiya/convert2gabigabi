@@ -7,7 +7,7 @@ export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'bmp' | 'gif';
 
 export interface ConvertOptions {
   outputFormat: ImageFormat;
-  quality?: number; // 0-100, jpeg/webp only (ignored for png)
+  quality?: number; // compressionRate 0-99 for jpeg/webp (ignored for png)
 }
 
 export interface FfmpegConvertResult {
@@ -61,7 +61,7 @@ export async function convertImage(
   // 前回の一時ファイルをクリーンアップ
   await cleanupCachedTempFiles();
 
-  const { outputFormat, quality = 85 } = options;
+  const { outputFormat, quality = 0 } = options;
 
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'image';
@@ -85,9 +85,9 @@ export async function convertImage(
   let qualityArgs: string;
   switch (outputFormat) {
     case 'jpeg': {
-      // FFmpeg の -q:v は 1(最高)〜31(最低)。quality(0-100)を変換。
-      // quality=100 → q:v=2, quality=0 → q:v=31
-      const qv = Math.round(2 + (100 - quality) * 29 / 100);
+      // compressionRate(0-99)を非線形カーブでFFmpeg -q:v(1-31)に変換。
+      // compressionRate=0 → q:v=1(最高品質), compressionRate=99 → q:v=31(最低品質)
+      const qv = Math.round(1 + 30 * Math.pow(quality / 100, 2.5));
       qualityArgs = `-q:v ${qv}`;
       break;
     }
@@ -96,7 +96,8 @@ export async function convertImage(
       qualityArgs = '-compression_level 6';
       break;
     case 'webp':
-      qualityArgs = `-quality ${Math.max(0, Math.min(100, quality))}`;
+      // compressionRate(0-99)を線形変換。WebPの-qualityは100=最高品質。
+      qualityArgs = `-quality ${Math.max(1, Math.min(100, 100 - quality))}`;
       break;
     case 'bmp':
       // BMP はロスレス。品質パラメータ不要。

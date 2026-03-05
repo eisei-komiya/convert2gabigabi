@@ -9,7 +9,7 @@ interface AppState {
   processedImage: string | null;
   isProcessing: boolean;
   outputFormat: ImageFormat;
-  convertQuality: number;
+  compressionRate: number;
   gabigabiLevel: number | null;
   videoOutputFormat: VideoFormat;
   setSelectedImage: (image: string | null) => void;
@@ -17,7 +17,7 @@ interface AppState {
   setProcessedImage: (image: string | null) => void;
   setIsProcessing: (processing: boolean) => void;
   setOutputFormat: (format: ImageFormat) => void;
-  setConvertQuality: (quality: number) => void;
+  setCompressionRate: (rate: number) => void;
   setGabigabiLevel: (level: number | null) => void;
   setVideoOutputFormat: (format: VideoFormat) => void;
 }
@@ -28,7 +28,7 @@ export const useAppStore = create<AppState>(set => ({
   processedImage: null,
   isProcessing: false,
   outputFormat: 'jpeg',
-  convertQuality: 85,
+  compressionRate: 0,
   gabigabiLevel: null,
   videoOutputFormat: 'mp4',
   setSelectedImage: image => set({selectedImage: image}),
@@ -36,7 +36,7 @@ export const useAppStore = create<AppState>(set => ({
   setProcessedImage: image => set({processedImage: image}),
   setIsProcessing: processing => set({isProcessing: processing}),
   setOutputFormat: format => set({outputFormat: format}),
-  setConvertQuality: quality => set({convertQuality: quality}),
+  setCompressionRate: rate => set({compressionRate: rate}),
   setGabigabiLevel: level => set({gabigabiLevel: level}),
   setVideoOutputFormat: format => set({videoOutputFormat: format}),
 }));
