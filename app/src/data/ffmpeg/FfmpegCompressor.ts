@@ -24,7 +24,7 @@ function isVideoFile(uri: string): boolean {
  * (#46) FFmpeg エラーログのパースから FFprobeKit.getMediaInformation() に移行。
  */
 async function getVideoDurationSec(inputPath: string): Promise<number> {
-  const session = await FFprobeKit.getMediaInformation(`"${inputPath}"`);
+  const session = await FFprobeKit.getMediaInformation(inputPath);
   const info = await session.getMediaInformation();
   if (info) {
     const duration = info.getDuration();
