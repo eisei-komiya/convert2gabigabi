@@ -761,9 +761,9 @@ const MainScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.discordButton, (!selectedImage || isProcessing || selectedMediaType === 'video') && styles.disabledButton]}
+          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
           onPress={handleDiscordCompress}
-          disabled={!selectedImage || isProcessing || selectedMediaType === 'video'}
+          disabled={!selectedImage || isProcessing}
           activeOpacity={0.8}>
           {processingAction === 'discord' ? (
             <View style={styles.processingRow}>
