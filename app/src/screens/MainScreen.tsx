@@ -34,7 +34,9 @@ import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
   {label: 'PNG', value: 'png'},
-  {label: 'WebP (非対応)', value: 'webp'},
+  {label: 'WebP', value: 'webp'},
+  {label: 'BMP', value: 'bmp'},
+  {label: 'GIF', value: 'gif'},
 ];
 
 const VIDEO_FORMAT_OPTIONS: {label: string; value: VideoFormat}[] = [
@@ -431,7 +433,7 @@ const MainScreen = () => {
       const filePath = processedImage.replace('file://', '');
       const ext = filePath.split('.').pop()?.toLowerCase() ?? 'jpg';
       const videoExts = ['mp4', 'avi', 'wmv', 'mov', 'mpg', 'mkv', 'webm'];
-      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : videoExts.includes(ext) ? 'video/' + ext : 'image/jpeg';
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'bmp' ? 'image/bmp' : ext === 'gif' ? 'image/gif' : videoExts.includes(ext) ? 'video/' + ext : 'image/jpeg';
       await Share.open({
         url: `file://${filePath}`,
         type: mimeType,
@@ -565,7 +567,7 @@ const MainScreen = () => {
             />
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
-                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + outputFormat) : '—'}</Text>
+                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + (outputFormat === 'jpeg' ? 'jpg' : outputFormat)) : '—'}</Text>
                 <Text style={styles.infoText}>💾 {processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
                 <Text style={styles.infoText}>🖼 {Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
                 <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
@@ -665,7 +667,7 @@ const MainScreen = () => {
           </View>
           )}
 
-          {selectedMediaType !== 'video' && outputFormat !== 'png' && (
+          {selectedMediaType !== 'video' && (outputFormat === 'jpeg' || outputFormat === 'webp') && (
             <View style={styles.qualityRow}>
               <Text style={styles.qualityLabel}>
                 品質: {convertQuality}%

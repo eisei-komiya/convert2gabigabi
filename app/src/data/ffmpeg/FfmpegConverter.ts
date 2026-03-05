@@ -3,7 +3,7 @@ import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
-export type ImageFormat = 'jpeg' | 'png' | 'webp';
+export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'bmp' | 'gif';
 
 export interface ConvertOptions {
   outputFormat: ImageFormat;
@@ -75,6 +75,8 @@ export async function convertImage(
     jpeg: '.jpg',
     png: '.png',
     webp: '.webp',
+    bmp: '.bmp',
+    gif: '.gif',
   };
   const ext = extMap[outputFormat];
   const cacheDirUri = Paths.cache.uri;
@@ -99,6 +101,14 @@ export async function convertImage(
       break;
     case 'webp':
       qualityArgs = `-quality ${Math.max(0, Math.min(100, quality))}`;
+      break;
+    case 'bmp':
+      // BMP はロスレス。品質パラメータ不要。
+      qualityArgs = '';
+      break;
+    case 'gif':
+      // GIF はパレット変換。品質パラメータ不要。
+      qualityArgs = '';
       break;
     default:
       qualityArgs = '';
