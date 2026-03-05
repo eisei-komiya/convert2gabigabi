@@ -60,13 +60,13 @@ const GABIGABI_LEVELS: {label: string; value: number}[] = [
 ];
 
 // テンプレートレベルに対応する設定値
-const TEMPLATE_SETTINGS: Record<number, {resizePercent: number; convertQuality: number}> = {
-  0: {resizePercent: 100, convertQuality: 2},
-  1: {resizePercent: 100, convertQuality: 18},
-  2: {resizePercent: 75,  convertQuality: 23},
-  3: {resizePercent: 50,  convertQuality: 27},
-  4: {resizePercent: 25,  convertQuality: 29},
-  5: {resizePercent: 25,  convertQuality: 31},
+const TEMPLATE_SETTINGS: Record<number, {resizePercent: number; compressionRate: number}> = {
+  0: {resizePercent: 100, compressionRate: 0},
+  1: {resizePercent: 100, compressionRate: 55},
+  2: {resizePercent: 75,  compressionRate: 70},
+  3: {resizePercent: 50,  compressionRate: 85},
+  4: {resizePercent: 25,  compressionRate: 92},
+  5: {resizePercent: 25,  compressionRate: 99},
 };
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -223,7 +223,7 @@ const MainScreen = () => {
     isProcessing,
     processedImage,
     outputFormat,
-    convertQuality,
+    compressionRate,
     gabigabiLevel,
     videoOutputFormat,
     setSelectedImage,
@@ -231,7 +231,7 @@ const MainScreen = () => {
     setProcessedImage,
     setIsProcessing,
     setOutputFormat,
-    setConvertQuality,
+    setCompressionRate,
     setGabigabiLevel,
     setVideoOutputFormat,
   } = useAppStore();
@@ -313,10 +313,10 @@ const MainScreen = () => {
 
   const handleQualityChange = useCallback(
     (quality: number) => {
-      setConvertQuality(quality);
+      setCompressionRate(quality);
       setGabigabiLevel(null);
     },
-    [setConvertQuality, setGabigabiLevel],
+    [setCompressionRate, setGabigabiLevel],
   );
 
   const handleTemplateSelect = useCallback(
@@ -324,9 +324,9 @@ const MainScreen = () => {
       const settings = TEMPLATE_SETTINGS[level];
       setGabigabiLevel(level);
       setResizePercent(settings.resizePercent);
-      setConvertQuality(settings.convertQuality);
+      setCompressionRate(settings.compressionRate);
     },
-    [setGabigabiLevel, setResizePercent, setConvertQuality],
+    [setGabigabiLevel, setResizePercent, setCompressionRate],
   );
 
   // #77: open fullscreen
@@ -384,7 +384,7 @@ const MainScreen = () => {
           // フォーマット変換のみ
           const result = await convertImage(selectedImage, {
             outputFormat,
-            quality: convertQuality,
+            quality: compressionRate,
           });
           resultUri = result.outputUri;
           resultBytes = result.outputBytes;
@@ -686,15 +686,15 @@ const MainScreen = () => {
           {selectedMediaType !== 'video' && (outputFormat === 'jpeg' || outputFormat === 'webp') && (
             <View style={styles.qualityRow}>
               <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>JPEG品質</Text>
-                <Text style={styles.qualityValue}>{convertQuality}</Text>
+                <Text style={styles.qualityLabel}>圧縮率</Text>
+                <Text style={styles.qualityValue}>{compressionRate}%</Text>
               </View>
               <CustomSlider
                 style={styles.qualitySlider}
-                minimumValue={1}
-                maximumValue={100}
+                minimumValue={0}
+                maximumValue={99}
                 step={1}
-                value={convertQuality}
+                value={compressionRate}
                 onValueChange={(v: number) => handleQualityChange(Math.round(v))}
                 minimumTrackTintColor={ACCENT2}
                 maximumTrackTintColor={BORDER}
