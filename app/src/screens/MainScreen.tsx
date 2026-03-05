@@ -480,7 +480,10 @@ const MainScreen = () => {
       setProcessedImage(resultUri);
       outputBytesRef.current = resultBytes;
     } catch (err) {
-      showError('エラー', `変換に失敗しました: ${String(err)}`);
+      const msg = String(err);
+      if (!msg.includes('cancel') && !msg.includes('Cancel')) {
+        showError('エラー', `変換に失敗しました: ${msg}`);
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -547,7 +550,10 @@ const MainScreen = () => {
       outputBytesRef.current = result.outputBytes;
       
     } catch (err) {
-      showError('エラー', `Discord圧縮に失敗しました: ${String(err)}`);
+      const msg = String(err);
+      if (!msg.includes('cancel') && !msg.includes('Cancel')) {
+        showError('エラー', `Discord圧縮に失敗しました: ${msg}`);
+      }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);

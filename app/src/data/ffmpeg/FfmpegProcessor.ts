@@ -165,12 +165,14 @@ export async function processVideoWithFfmpeg(
 
   // -vf scale でリサイズ、品質パラメータでガビガビ化
   // scale の値を偶数に丸める（H.264 の要件）
+  const muxArgs = outputFormat === 'mpg' ? ['-max_muxing_queue_size', '9999'] : [];
   const cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-vf', `"scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2"`,
     ...codecArgs,
     ...qualityArgs,
+    ...muxArgs,
     `"${outputPath}"`,
   ].join(' ');
 
