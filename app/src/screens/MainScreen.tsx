@@ -29,7 +29,7 @@ import {VideoFormat} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
 import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
-import {FFmpegKit} from 'ffmpeg-kit-react-native';
+import {FFmpegKit, FFprobeKit} from 'ffmpeg-kit-react-native';
 import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
@@ -270,21 +270,44 @@ const MainScreen = () => {
           ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
           : `${(bytes / 1024).toFixed(1)} KB`;
         const name = selectedImage.split('/').pop() ?? '';
-        Image.getSize(
-          selectedImage,
-          (width, height) => {
+        if (selectedMediaType === 'video') {
+          // 動画の場合はFFprobeKitでwidthとheightを取得する (#165)
+          try {
+            const session = await FFprobeKit.execute(`-v quiet -print_format json -show_streams "${selectedImage}"`);
+            const output = await session.getOutput();
+            let width = 0;
+            let height = 0;
+            try {
+              const streams = JSON.parse(output ?? '{}').streams ?? [];
+              const videoStream = streams.find((s: {codec_type: string}) => s.codec_type === 'video');
+              if (videoStream) {
+                width = videoStream.width ?? 0;
+                height = videoStream.height ?? 0;
+              }
+            } catch {
+              // JSON parse失敗時はwidth/height=0のまま
+            }
             if (!cancelled) setFileInfo({name, size: sizeStr, width, height});
-          },
-          () => {
+          } catch {
             if (!cancelled) setFileInfo({name, size: sizeStr, width: 0, height: 0});
-          },
-        );
+          }
+        } else {
+          Image.getSize(
+            selectedImage,
+            (width, height) => {
+              if (!cancelled) setFileInfo({name, size: sizeStr, width, height});
+            },
+            () => {
+              if (!cancelled) setFileInfo({name, size: sizeStr, width: 0, height: 0});
+            },
+          );
+        }
       } catch {
         // ignore
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedImage]);
+  }, [selectedImage, selectedMediaType]);
 
   const showError = useCallback((title: string, message: string) => {
     setErrorModal({visible: true, title, message});
