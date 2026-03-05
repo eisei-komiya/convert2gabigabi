@@ -75,6 +75,20 @@ const GABIGABI_CRF: Record<number, number> = {
 };
 
 /**
+ * ガビガビレベルに対応するmpeg2video用 -q:v 値（1=最高品質, 31=最低品質）
+ * mpeg2videoは -crf 非対応のため、専用マッピングを使用する。
+ * (#164) GABIGABI_CRF の値（23〜51）は -q:v の有効範囲（1〜31）を超えるため個別に定義。
+ */
+const GABIGABI_MPG_QV: Record<number, number> = {
+  0: 2,  // ほぼ劣化なし
+  1: 8,
+  2: 15,
+  3: 20,
+  4: 26,
+  5: 31, // 最低品質
+};
+
+/**
  * FFmpegを使って動画をガビガビ化する。
  * スケール縮小 + 低品質H.264エンコードでガビガビ効果を出す。
  *
@@ -140,7 +154,8 @@ export async function processVideoWithFfmpeg(
   // - libx264 / wmv2: -crf
   let qualityArgs: string[];
   if (outputFormat === 'mpg') {
-    qualityArgs = ['-q:v', String(crf)];
+    const qv = GABIGABI_MPG_QV[gabigabiLevel] ?? 15;
+    qualityArgs = ['-q:v', String(qv)];
   } else if (outputFormat === 'webm') {
     qualityArgs = ['-crf', String(crf), '-b:v', '0'];
   } else {
