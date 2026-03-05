@@ -192,10 +192,18 @@ export async function processVideoWithFfmpeg(
   };
 }
 
+export interface ProcessWithFfmpegOptions {
+  shrinkExpandEnabled?: boolean;
+  shrinkExpandRate?: number; // 10〜90 (%)
+  multiCompressEnabled?: boolean;
+  multiCompressCount?: number; // 1〜10
+}
+
 export async function processWithFfmpeg(
   inputUri: string,
   scalePct: number,
   gabigabiLevel: number = 2,
+  options: ProcessWithFfmpegOptions = {},
 ): Promise<FfmpegProcessResult> {
   if (scalePct <= 0 || scalePct > 100) {
     throw new Error('scalePct must be within (0, 100]');
@@ -203,6 +211,13 @@ export async function processWithFfmpeg(
   if (gabigabiLevel < 0 || gabigabiLevel > 5) {
     throw new Error('gabigabiLevel must be 0-5');
   }
+
+  const {
+    shrinkExpandEnabled = false,
+    shrinkExpandRate = 50,
+    multiCompressEnabled = false,
+    multiCompressCount = 3,
+  } = options;
 
   // 入力ファイルの存在確認とサイズチェック
   const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
@@ -233,24 +248,74 @@ export async function processWithFfmpeg(
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
   const scale = scalePct / 100;
 
-  // -vf scale でリサイズ、-q:v でJPEG品質を下げてガビガビ化
-  // -update 1 -frames:v 1: image2 muxer で単一画像出力に必要
-  const cmd = [
+  // -vf フィルターチェーンを構築
+  // 1. リサイズ
+  // 2. 縮小→再拡大（shrinkExpandEnabled の場合）
+  const vfFilters: string[] = [];
+  vfFilters.push(`scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2`);
+  if (shrinkExpandEnabled) {
+    const shrinkRate = Math.max(10, Math.min(90, shrinkExpandRate)) / 100;
+    // リサイズ後サイズからさらに shrinkRate% に縮小し、元のリサイズ後サイズに拡大
+    vfFilters.push(`scale=trunc(iw*${shrinkRate}/2)*2:trunc(ih*${shrinkRate}/2)*2`);
+    vfFilters.push(`scale=trunc(iw/${shrinkRate}/2)*2:trunc(ih/${shrinkRate}/2)*2`);
+  }
+  const vfChain = vfFilters.join(',');
+
+  // 1回目の変換
+  const buildCmd = (inPath: string, outPath: string) => [
     '-y',
-    '-i', `"${inputPath}"`,
-    '-vf', `"scale=iw*${scale}:ih*${scale}"`,
+    '-i', `"${inPath}"`,
+    '-vf', `"${vfChain}"`,
     '-q:v', String(quality),
     '-update', '1',
     '-frames:v', '1',
-    `"${outputPath}"`,
+    `"${outPath}"`,
   ].join(' ');
 
-  const session = await FFmpegKit.execute(cmd);
+  const session = await FFmpegKit.execute(buildCmd(inputPath, outputPath));
   const rc = await session.getReturnCode();
 
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await extractErrorFromLogs(session);
     throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+  }
+
+  // 多重圧縮（2回目〜N回目）
+  if (multiCompressEnabled && multiCompressCount > 1) {
+    const totalPasses = Math.max(1, Math.min(10, multiCompressCount));
+    let currentInput = outputUri;
+
+    for (let pass = 2; pass <= totalPasses; pass++) {
+      const passSuffix = generateUniqueFileSuffix();
+      const passUri = `${cacheDir}${stem}_gabigabi_pass${pass}_${passSuffix}${ext}`;
+      const passInputPath = currentInput.replace('file://', '');
+      const passOutputPath = passUri.replace('file://', '');
+
+      // 多重圧縮では vf フィルターなしで再圧縮のみ
+      const passCmd = [
+        '-y',
+        '-i', `"${passInputPath}"`,
+        '-q:v', String(quality),
+        '-update', '1',
+        '-frames:v', '1',
+        `"${passOutputPath}"`,
+      ].join(' ');
+
+      const passSession = await FFmpegKit.execute(passCmd);
+      const passRc = await passSession.getReturnCode();
+
+      if (!ReturnCode.isSuccess(passRc)) {
+        const logs = await extractErrorFromLogs(passSession);
+        throw new Error(`FFmpeg多重圧縮(pass ${pass})に失敗しました: ${logs}`);
+      }
+
+      // 前の一時ファイルを削除（最初の出力=outputUri は pass2 の後に削除）
+      await FileSystem.deleteAsync(currentInput, { idempotent: true });
+      currentInput = passUri;
+    }
+
+    // 最終出力を outputUri にリネーム（move）
+    await FileSystem.moveAsync({ from: currentInput, to: outputUri });
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
