@@ -201,9 +201,10 @@ async function compressVideoToTarget(
     throw new Error('動画の長さが取得できませんでした');
   }
 
-  // 目標ビットレートを計算（オーバーヘッド分として 5% を引く）
-  const targetBits = targetBytes * 8 * 0.95;
-  const videoBitrateKbps = Math.floor(targetBits / durationSec / 1000);
+  // 目標ビットレートを計算（オーバーヘッド10%マージン + オーディオビットレート分を差し引く）
+  const audioBitrateKbps = 64;
+  const targetBits = targetBytes * 8 * 0.90;
+  const videoBitrateKbps = Math.floor(targetBits / durationSec / 1000) - audioBitrateKbps;
 
   if (videoBitrateKbps < 50) {
     throw new Error('動画が長すぎて10MB以下には圧縮できません');
@@ -215,27 +216,86 @@ async function compressVideoToTarget(
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
+  const passlogPath = outputPath.replace('.mp4', '_passlog');
 
-  const cmd = [
+  // 2パスエンコードで精度の高いビットレート制御
+  const pass1Cmd = [
     '-y',
     '-i', `"${inputPath}"`,
+    '-c:v', 'libx264',
     '-b:v', `${videoBitrateKbps}k`,
-    '-maxrate', `${videoBitrateKbps}k`,
-    '-bufsize', `${videoBitrateKbps * 2}k`,
+    '-pass', '1',
+    '-passlogfile', `"${passlogPath}"`,
+    '-an',
+    '-f', 'null', '/dev/null',
+  ].join(' ');
+
+  const pass2Cmd = [
+    '-y',
+    '-i', `"${inputPath}"`,
+    '-c:v', 'libx264',
+    '-b:v', `${videoBitrateKbps}k`,
+    '-pass', '2',
+    '-passlogfile', `"${passlogPath}"`,
     '-c:a', 'aac',
     '-b:a', '64k',
     `"${outputPath}"`,
   ].join(' ');
 
-  const session = await FFmpegKit.execute(cmd);
-  const rc = await session.getReturnCode();
-  if (!ReturnCode.isSuccess(rc)) {
-    const logs = await extractErrorFromLogs(session);
-    throw new Error(`FFmpeg動画圧縮に失敗しました: ${logs}`);
+  const pass1Session = await FFmpegKit.execute(pass1Cmd);
+  const pass1Rc = await pass1Session.getReturnCode();
+  if (!ReturnCode.isSuccess(pass1Rc)) {
+    const logs = await extractErrorFromLogs(pass1Session);
+    throw new Error(`FFmpeg 1パス目に失敗しました: ${logs}`);
   }
 
-  const outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
-  const outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  const pass2Session = await FFmpegKit.execute(pass2Cmd);
+  const pass2Rc = await pass2Session.getReturnCode();
+  if (!ReturnCode.isSuccess(pass2Rc)) {
+    const logs = await extractErrorFromLogs(pass2Session);
+    throw new Error(`FFmpeg 2パス目に失敗しました: ${logs}`);
+  }
+
+  let outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
+  let outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+
+  // 出力サイズ検証: 目標を超えていたらビットレートを下げてリトライ（最大3回）
+  let retryBitrate = videoBitrateKbps;
+  for (let attempt = 0; attempt < 3 && outputBytes > targetBytes; attempt++) {
+    retryBitrate = Math.floor(retryBitrate * 0.80);
+    if (retryBitrate < 50) break;
+
+    const retrySuffix = generateUniqueFileSuffix();
+    const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.mp4`;
+    const retryOutputPath = retryOutputUri.replace('file://', '');
+    const retryPasslogPath = retryOutputPath.replace('.mp4', '_passlog');
+
+    const retry1Cmd = [
+      '-y', '-i', `"${inputPath}"`,
+      '-c:v', 'libx264', '-b:v', `${retryBitrate}k`,
+      '-pass', '1', '-passlogfile', `"${retryPasslogPath}"`,
+      '-an', '-f', 'null', '/dev/null',
+    ].join(' ');
+    const retry2Cmd = [
+      '-y', '-i', `"${inputPath}"`,
+      '-c:v', 'libx264', '-b:v', `${retryBitrate}k`,
+      '-pass', '2', '-passlogfile', `"${retryPasslogPath}"`,
+      '-c:a', 'aac', '-b:a', '64k',
+      `"${retryOutputPath}"`,
+    ].join(' ');
+
+    const r1 = await FFmpegKit.execute(retry1Cmd);
+    if (!ReturnCode.isSuccess(await r1.getReturnCode())) continue;
+    const r2 = await FFmpegKit.execute(retry2Cmd);
+    if (!ReturnCode.isSuccess(await r2.getReturnCode())) continue;
+
+    const retryInfo = await FileSystem.getInfoAsync(retryOutputUri, { size: true });
+    const retryBytes = (retryInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+    if (retryBytes > 0) {
+      outputBytes = retryBytes;
+      outInfo = retryInfo;
+    }
+  }
 
   return {
     outputUri,

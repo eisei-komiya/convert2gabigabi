@@ -533,8 +533,19 @@ const MainScreen = () => {
     try {
       const filePath = processedImage.replace('file://', '');
       const ext = filePath.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const videoExts = ['mp4', 'mov', 'mkv', 'webm'];
-      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'bmp' ? 'image/bmp' : ext === 'gif' ? 'image/gif' : videoExts.includes(ext) ? 'video/' + ext : 'image/jpeg';
+      const videoMimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        mov: 'video/quicktime',
+        avi: 'video/x-msvideo',
+        wmv: 'video/x-ms-wmv',
+        mkv: 'video/x-matroska',
+        webm: 'video/webm',
+        mpg: 'video/mpeg',
+        mpeg: 'video/mpeg',
+        m4v: 'video/x-m4v',
+        '3gp': 'video/3gpp',
+      };
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'bmp' ? 'image/bmp' : ext === 'gif' ? 'image/gif' : videoMimeMap[ext] ?? 'image/jpeg';
       await Share.open({
         url: `file://${filePath}`,
         type: mimeType,
