@@ -17,6 +17,7 @@ import {
   PanResponder,
   Dimensions,
   Linking,
+  Switch,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import Share from 'react-native-share';
@@ -60,13 +61,20 @@ const GABIGABI_LEVELS: {label: string; value: number}[] = [
 ];
 
 // テンプレートレベルに対応する設定値
-const TEMPLATE_SETTINGS: Record<number, {resizePercent: number; compressionRate: number}> = {
-  0: {resizePercent: 100, compressionRate: 0},
-  1: {resizePercent: 100, compressionRate: 55},
-  2: {resizePercent: 75,  compressionRate: 70},
-  3: {resizePercent: 50,  compressionRate: 85},
-  4: {resizePercent: 25,  compressionRate: 92},
-  5: {resizePercent: 25,  compressionRate: 99},
+const TEMPLATE_SETTINGS: Record<number, {
+  resizePercent: number;
+  compressionRate: number;
+  shrinkExpandEnabled: boolean;
+  shrinkExpandRate: number;
+  multiCompressEnabled: boolean;
+  multiCompressCount: number;
+}> = {
+  0: {resizePercent: 100, compressionRate: 0,  shrinkExpandEnabled: false, shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
+  1: {resizePercent: 100, compressionRate: 55, shrinkExpandEnabled: false, shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
+  2: {resizePercent: 75,  compressionRate: 70, shrinkExpandEnabled: false, shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
+  3: {resizePercent: 25,  compressionRate: 99, shrinkExpandEnabled: false, shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
+  4: {resizePercent: 25,  compressionRate: 99, shrinkExpandEnabled: true,  shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
+  5: {resizePercent: 5,   compressionRate: 99, shrinkExpandEnabled: true,  shrinkExpandRate: 50, multiCompressEnabled: true,  multiCompressCount: 3},
 };
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -226,6 +234,10 @@ const MainScreen = () => {
     compressionRate,
     gabigabiLevel,
     videoOutputFormat,
+    shrinkExpandEnabled,
+    shrinkExpandRate,
+    multiCompressEnabled,
+    multiCompressCount,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
@@ -234,6 +246,10 @@ const MainScreen = () => {
     setCompressionRate,
     setGabigabiLevel,
     setVideoOutputFormat,
+    setShrinkExpandEnabled,
+    setShrinkExpandRate,
+    setMultiCompressEnabled,
+    setMultiCompressCount,
   } = useAppStore();
 
   const [errorModal, setErrorModal] = useState<{visible: boolean; title: string; message: string}>({
@@ -342,14 +358,50 @@ const MainScreen = () => {
     [setCompressionRate, setGabigabiLevel],
   );
 
+  const handleShrinkExpandToggle = useCallback(
+    (val: boolean) => {
+      setShrinkExpandEnabled(val);
+      setGabigabiLevel(null);
+    },
+    [setShrinkExpandEnabled, setGabigabiLevel],
+  );
+
+  const handleShrinkExpandRateChange = useCallback(
+    (val: number) => {
+      setShrinkExpandRate(Math.round(val));
+      setGabigabiLevel(null);
+    },
+    [setShrinkExpandRate, setGabigabiLevel],
+  );
+
+  const handleMultiCompressToggle = useCallback(
+    (val: boolean) => {
+      setMultiCompressEnabled(val);
+      setGabigabiLevel(null);
+    },
+    [setMultiCompressEnabled, setGabigabiLevel],
+  );
+
+  const handleMultiCompressCountChange = useCallback(
+    (val: number) => {
+      setMultiCompressCount(Math.round(val));
+      setGabigabiLevel(null);
+    },
+    [setMultiCompressCount, setGabigabiLevel],
+  );
+
   const handleTemplateSelect = useCallback(
     (level: number) => {
       const settings = TEMPLATE_SETTINGS[level];
       setGabigabiLevel(level);
       setResizePercent(settings.resizePercent);
       setCompressionRate(settings.compressionRate);
+      setShrinkExpandEnabled(settings.shrinkExpandEnabled);
+      setShrinkExpandRate(settings.shrinkExpandRate);
+      setMultiCompressEnabled(settings.multiCompressEnabled);
+      setMultiCompressCount(settings.multiCompressCount);
     },
-    [setGabigabiLevel, setResizePercent, setCompressionRate],
+    [setGabigabiLevel, setResizePercent, setCompressionRate, setShrinkExpandEnabled, setShrinkExpandRate, setMultiCompressEnabled, setMultiCompressCount],
   );
 
   // #77: open fullscreen
@@ -414,7 +466,12 @@ const MainScreen = () => {
         }
       } else {
         // ガビガビ化（リサイズ + 品質劣化）
-        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel!);
+        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel!, {
+          shrinkExpandEnabled,
+          shrinkExpandRate,
+          multiCompressEnabled,
+          multiCompressCount,
+        });
         resultUri = result.outputUri;
         resultBytes = result.outputBytes;
       }
@@ -647,6 +704,72 @@ const MainScreen = () => {
             originalWidth={fileInfo?.width}
             originalHeight={fileInfo?.height}
           />
+        </View>
+
+        {/* ── Shrink→Expand Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>縮小→再拡大</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>ON/OFF</Text>
+            <Switch
+              value={shrinkExpandEnabled}
+              onValueChange={handleShrinkExpandToggle}
+              trackColor={{false: BORDER, true: ACCENT}}
+              thumbColor={shrinkExpandEnabled ? '#fff' : '#888'}
+            />
+          </View>
+          {shrinkExpandEnabled && (
+            <View style={styles.qualityRow}>
+              <View style={styles.qualityLabelRow}>
+                <Text style={styles.qualityLabel}>縮小率</Text>
+                <Text style={styles.qualityValue}>{shrinkExpandRate}%</Text>
+              </View>
+              <CustomSlider
+                style={styles.qualitySlider}
+                minimumValue={10}
+                maximumValue={90}
+                step={1}
+                value={shrinkExpandRate}
+                onValueChange={handleShrinkExpandRateChange}
+                minimumTrackTintColor={ACCENT}
+                maximumTrackTintColor={BORDER}
+                thumbTintColor={ACCENT}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* ── Multi-Compress Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>多重圧縮</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>ON/OFF</Text>
+            <Switch
+              value={multiCompressEnabled}
+              onValueChange={handleMultiCompressToggle}
+              trackColor={{false: BORDER, true: ACCENT}}
+              thumbColor={multiCompressEnabled ? '#fff' : '#888'}
+            />
+          </View>
+          {multiCompressEnabled && (
+            <View style={styles.qualityRow}>
+              <View style={styles.qualityLabelRow}>
+                <Text style={styles.qualityLabel}>圧縮回数</Text>
+                <Text style={styles.qualityValue}>{multiCompressCount}回</Text>
+              </View>
+              <CustomSlider
+                style={styles.qualitySlider}
+                minimumValue={1}
+                maximumValue={10}
+                step={1}
+                value={multiCompressCount}
+                onValueChange={handleMultiCompressCountChange}
+                minimumTrackTintColor={ACCENT}
+                maximumTrackTintColor={BORDER}
+                thumbTintColor={ACCENT}
+              />
+            </View>
+          )}
         </View>
 
         {/* ── Format Conversion Section ── */}
@@ -1055,6 +1178,17 @@ const styles = StyleSheet.create({
   },
   qualityRow: {
     marginTop: 12,
+  },
+  switchRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 4,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: TEXT_PRIMARY,
+    fontWeight: '600',
   },
   qualityLabelRow: {
     flexDirection: 'row',

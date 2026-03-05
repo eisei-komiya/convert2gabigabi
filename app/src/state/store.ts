@@ -12,6 +12,10 @@ interface AppState {
   compressionRate: number;
   gabigabiLevel: number | null;
   videoOutputFormat: VideoFormat;
+  shrinkExpandEnabled: boolean;
+  shrinkExpandRate: number;
+  multiCompressEnabled: boolean;
+  multiCompressCount: number;
   setSelectedImage: (image: string | null) => void;
   setResizePercent: (percent: number) => void;
   setProcessedImage: (image: string | null) => void;
@@ -20,6 +24,10 @@ interface AppState {
   setCompressionRate: (rate: number) => void;
   setGabigabiLevel: (level: number | null) => void;
   setVideoOutputFormat: (format: VideoFormat) => void;
+  setShrinkExpandEnabled: (enabled: boolean) => void;
+  setShrinkExpandRate: (rate: number) => void;
+  setMultiCompressEnabled: (enabled: boolean) => void;
+  setMultiCompressCount: (count: number) => void;
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -31,6 +39,10 @@ export const useAppStore = create<AppState>(set => ({
   compressionRate: 0,
   gabigabiLevel: null,
   videoOutputFormat: 'mp4',
+  shrinkExpandEnabled: false,
+  shrinkExpandRate: 50,
+  multiCompressEnabled: false,
+  multiCompressCount: 3,
   setSelectedImage: image => set({selectedImage: image}),
   setResizePercent: percent => set({resizePercent: percent}),
   setProcessedImage: image => set({processedImage: image}),
@@ -39,4 +51,8 @@ export const useAppStore = create<AppState>(set => ({
   setCompressionRate: rate => set({compressionRate: rate}),
   setGabigabiLevel: level => set({gabigabiLevel: level}),
   setVideoOutputFormat: format => set({videoOutputFormat: format}),
+  setShrinkExpandEnabled: enabled => set({shrinkExpandEnabled: enabled}),
+  setShrinkExpandRate: rate => set({shrinkExpandRate: rate}),
+  setMultiCompressEnabled: enabled => set({multiCompressEnabled: enabled}),
+  setMultiCompressCount: count => set({multiCompressCount: count}),
 }));
