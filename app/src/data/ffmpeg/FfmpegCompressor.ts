@@ -258,6 +258,7 @@ async function compressVideoToTarget(
 
   let outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
   let outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
+  let currentOutputUri = outputUri;
 
   // 出力サイズ検証: 目標を超えていたらビットレートを下げてリトライ（最大3回）
   let retryBitrate = videoBitrateKbps;
@@ -294,11 +295,12 @@ async function compressVideoToTarget(
     if (retryBytes > 0) {
       outputBytes = retryBytes;
       outInfo = retryInfo;
+      currentOutputUri = retryOutputUri;
     }
   }
 
   return {
-    outputUri,
+    outputUri: currentOutputUri,
     outputBytes,
     compressionRatio: originalBytes > 0 ? outputBytes / originalBytes : 1,
   };
