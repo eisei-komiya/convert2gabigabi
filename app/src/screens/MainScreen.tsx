@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   SafeAreaView,
   StyleSheet,
@@ -212,6 +213,7 @@ const modalStyles = StyleSheet.create({
 });
 
 const MainScreen = () => {
+  const insets = useSafeAreaInsets();
   const {
     selectedImage,
     resizePercent,
@@ -703,7 +705,7 @@ const MainScreen = () => {
       </ScrollView>
 
       {/* ── Floating Action Area (#112) ── */}
-      <View style={styles.floatingArea}>
+      <View style={[styles.floatingArea, {paddingBottom: Math.max(insets.bottom + 16, 32)}]}>
         {/* Cancel Button during processing */}
         {isProcessing && (
           <TouchableOpacity
