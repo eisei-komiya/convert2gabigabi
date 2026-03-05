@@ -10,7 +10,6 @@ export interface CompressResult {
 }
 
 const DISCORD_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const MAX_INPUT_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * ファイルの拡張子から動画かどうかを判定する。
@@ -77,9 +76,6 @@ async function compressImageToTarget(
   const originalBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   if (originalBytes === 0) {
     throw new Error('入力ファイルが空（0バイト）です');
-  }
-  if (originalBytes > MAX_INPUT_BYTES) {
-    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
   }
 
   // 前回の一時ファイルをクリーンアップ
@@ -185,9 +181,6 @@ async function compressVideoToTarget(
   const originalBytes = (inputInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   if (originalBytes === 0) {
     throw new Error('入力ファイルが空（0バイト）です');
-  }
-  if (originalBytes > MAX_INPUT_BYTES) {
-    throw new Error(`入力ファイルが大きすぎます（上限: 100MB）`);
   }
 
   // 前回の一時ファイルをクリーンアップ

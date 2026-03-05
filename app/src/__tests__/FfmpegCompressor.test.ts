@@ -146,12 +146,6 @@ describe('compressForDiscord (image)', () => {
     await expect(compressForDiscord('file:///photos/img.jpg')).rejects.toThrow('入力ファイルが空（0バイト）です');
   });
 
-  it('throws for oversized input (>100 MB)', async () => {
-    const hugeSize = 200 * 1024 * 1024;
-    mockGetInfoAsync.mockResolvedValueOnce({ exists: true, size: hugeSize }); // 1. input
-    await expect(compressForDiscord('file:///photos/img.jpg')).rejects.toThrow('100MB');
-  });
-
   it('outputs jpeg for forceJpeg (png input → .jpg output)', async () => {
     setupImageFileInfo();
     const result = await compressForDiscord('file:///photos/img.png');
