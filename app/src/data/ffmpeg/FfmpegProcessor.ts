@@ -75,19 +75,6 @@ const GABIGABI_CRF: Record<number, number> = {
   5: 51, // 最低品質
 };
 
-/**
- * ガビガビレベルに対応するmpeg2video用 -q:v 値（1=最高品質, 31=最低品質）
- * mpeg2videoは -crf 非対応のため、専用マッピングを使用する。
- * (#164) GABIGABI_CRF の値（23〜51）は -q:v の有効範囲（1〜31）を超えるため個別に定義。
- */
-const GABIGABI_MPG_QV: Record<number, number> = {
-  0: 2,  // ほぼ劣化なし
-  1: 8,
-  2: 15,
-  3: 20,
-  4: 26,
-  5: 31, // 最低品質
-};
 
 /**
  * FFmpegを使って動画をガビガビ化する。
@@ -105,7 +92,6 @@ const VIDEO_FORMAT_CODECS: Record<VideoFormat, string[]> = {
   avi:  ['-c:v', 'libx264', '-c:a', 'mp3'],
   wmv:  ['-c:v', 'wmv2', '-c:a', 'wmav2'],
   mov:  ['-c:v', 'libx264', '-c:a', 'aac'],
-  mpg:  ['-c:v', 'mpeg2video', '-c:a', 'mp2'],
   mkv:  ['-c:v', 'libx264', '-c:a', 'aac'],
   webm: ['-c:v', 'libvpx-vp9', '-c:a', 'libvorbis'],
 };
@@ -150,14 +136,10 @@ export async function processVideoWithFfmpeg(
   const codecArgs = VIDEO_FORMAT_CODECS[outputFormat] ?? VIDEO_FORMAT_CODECS.mp4;
 
   // フォーマットに応じた品質パラメータを選択する
-  // - mpeg2video: -q:v (1=最高, 31=最低) — -crf 非対応
   // - libvpx-vp9 (webm): -crf + -b:v 0 (constrained quality mode)
   // - libx264 / wmv2: -crf
   let qualityArgs: string[];
-  if (outputFormat === 'mpg') {
-    const qv = GABIGABI_MPG_QV[gabigabiLevel] ?? 15;
-    qualityArgs = ['-q:v', String(qv)];
-  } else if (outputFormat === 'webm') {
+  if (outputFormat === 'webm') {
     qualityArgs = ['-crf', String(crf), '-b:v', '0'];
   } else {
     qualityArgs = ['-crf', String(crf)];
@@ -165,14 +147,12 @@ export async function processVideoWithFfmpeg(
 
   // -vf scale でリサイズ、品質パラメータでガビガビ化
   // scale の値を偶数に丸める（H.264 の要件）
-  const muxArgs = outputFormat === 'mpg' ? ['-max_muxing_queue_size', '9999'] : [];
   const cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-vf', `"scale=trunc(iw*${scale}/2)*2:trunc(ih*${scale}/2)*2"`,
     ...codecArgs,
     ...qualityArgs,
-    ...muxArgs,
     `"${outputPath}"`,
   ].join(' ');
 
