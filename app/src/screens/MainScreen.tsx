@@ -22,6 +22,7 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import Share from 'react-native-share';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ExpoImagePicker from 'expo-image-picker';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import ErrorModal from '../components/ErrorModal';
@@ -339,6 +340,26 @@ const MainScreen = () => {
     [setSelectedImage, setProcessedImage],
   );
 
+  const handleOpenPicker = useCallback(async () => {
+    const { status } = await ExpoImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要', 'ギャラリーへのアクセスを許可してください');
+      return;
+    }
+    const result = await ExpoImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const isVideo =
+        asset.type === 'video' ||
+        /\.(mp4|mov|mkv|webm|m4v|3gp|flv)$/i.test(asset.uri);
+      handleImageSelect(asset.uri, isVideo ? 'video' : 'image');
+    }
+  }, [handleImageSelect]);
+
   const handleResizeChange = useCallback(
     (percent: number) => {
       setResizePercent(percent);
@@ -621,8 +642,8 @@ const MainScreen = () => {
               label="BEFORE"
               uri={selectedImage}
               mediaType={selectedMediaType ?? 'image'}
-              placeholder={selectedImage ? '' : ''}
-              onPickerPress={undefined}
+              placeholder={''}
+              onPickerPress={handleOpenPicker}
               onImagePress={handleImagePress}
             />
             {selectedImage && fileInfo && (
@@ -658,13 +679,6 @@ const MainScreen = () => {
             )}
           </View>
         </View>
-
-        {/* ── Image Picker Button ── */}
-        <ImagePickerComponent
-          onImageSelect={handleImageSelect}
-          selectedImage={selectedImage || undefined}
-          selectedMediaType={selectedMediaType ?? undefined}
-        />
 
         {/* ── Template Section (旧ガビガビレベル) ── */}
         <View style={styles.sectionContainer}>
@@ -946,9 +960,16 @@ interface PreviewCardProps {
   onImagePress?: (uri: string | null) => void;
 }
 
-const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image', placeholder, onImagePress}) => (
+const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image', placeholder, onImagePress, onPickerPress}) => (
   <View style={styles.previewCard}>
-    <Text style={styles.previewLabel}>{label}</Text>
+    <View style={styles.previewLabelRow}>
+      <Text style={styles.previewLabel}>{label}</Text>
+      {uri && onPickerPress && (
+        <TouchableOpacity onPress={onPickerPress} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Text style={styles.reloadButton}>🔄</Text>
+        </TouchableOpacity>
+      )}
+    </View>
     {uri ? (
       mediaType === 'video' ? (
         <View style={[styles.previewEmpty, styles.videoPreview]}>
@@ -964,9 +985,10 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
         </TouchableOpacity>
       )
     ) : (
-      <View style={styles.previewEmpty}>
-        <Text style={styles.previewEmptyText}>{placeholder}</Text>
-      </View>
+      <TouchableOpacity onPress={onPickerPress} activeOpacity={0.7} style={styles.previewEmptyTouchable}>
+        <Text style={styles.previewEmptyIcon}>＋</Text>
+        <Text style={styles.previewEmptyText}>{placeholder || '画像 / 動画を選択'}</Text>
+      </TouchableOpacity>
     )}
   </View>
 );
@@ -1047,14 +1069,35 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
     overflow: 'hidden',
   },
+  previewLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  reloadButton: {
+    fontSize: 16,
+    paddingVertical: 4,
+  },
+  previewEmptyTouchable: {
+    width: '100%',
+    height: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  previewEmptyIcon: {
+    fontSize: 28,
+    color: TEXT_SECONDARY,
+  },
   previewLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: TEXT_SECONDARY,
     textAlign: 'center',
     paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
