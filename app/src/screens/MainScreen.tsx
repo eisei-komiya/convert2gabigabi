@@ -623,46 +623,58 @@ const MainScreen = () => {
         {/* ── Format Conversion Section ── */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>出力フォーマット</Text>
-          {selectedMediaType === 'video' ? (
-            <View style={styles.formatRow}>
-              {VIDEO_FORMAT_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.formatButton,
-                    videoOutputFormat === opt.value && styles.formatButtonActive,
-                  ]}
-                  onPress={() => setVideoOutputFormat(opt.value)}>
-                  <Text
+          {/* 動画選択時: 動画フォーマットのみ / 画像選択時: 画像フォーマットのみ / 未選択時: 両方表示 */}
+          {selectedMediaType !== 'image' && (
+            <>
+              {selectedMediaType === null && (
+                <Text style={styles.formatGroupLabel}>🎬 動画</Text>
+              )}
+              <View style={[styles.formatRow, styles.formatRowWrap]}>
+                {VIDEO_FORMAT_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
                     style={[
-                      styles.formatButtonText,
-                      videoOutputFormat === opt.value && styles.formatButtonTextActive,
-                    ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-          <View style={styles.formatRow}>
-            {FORMAT_OPTIONS.map(opt => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.formatButton,
-                  outputFormat === opt.value && styles.formatButtonActive,
-                ]}
-                onPress={() => setOutputFormat(opt.value)}>
-                <Text
-                  style={[
-                    styles.formatButtonText,
-                    outputFormat === opt.value && styles.formatButtonTextActive,
-                  ]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                      styles.formatButton,
+                      videoOutputFormat === opt.value && styles.formatButtonActive,
+                    ]}
+                    onPress={() => setVideoOutputFormat(opt.value)}>
+                    <Text
+                      style={[
+                        styles.formatButtonText,
+                        videoOutputFormat === opt.value && styles.formatButtonTextActive,
+                      ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+          {selectedMediaType !== 'video' && (
+            <>
+              {selectedMediaType === null && (
+                <Text style={[styles.formatGroupLabel, {marginTop: 12}]}>🖼 画像</Text>
+              )}
+              <View style={styles.formatRow}>
+                {FORMAT_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.formatButton,
+                      outputFormat === opt.value && styles.formatButtonActive,
+                    ]}
+                    onPress={() => setOutputFormat(opt.value)}>
+                    <Text
+                      style={[
+                        styles.formatButtonText,
+                        outputFormat === opt.value && styles.formatButtonTextActive,
+                      ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
           )}
 
           {selectedMediaType !== 'video' && outputFormat !== 'png' && (
@@ -971,6 +983,15 @@ const styles = StyleSheet.create({
   formatRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  formatRowWrap: {
+    flexWrap: 'wrap',
+  },
+  formatGroupLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+    marginBottom: 8,
   },
   formatButton: {
     flex: 1,
