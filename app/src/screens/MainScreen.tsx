@@ -706,72 +706,6 @@ const MainScreen = () => {
           />
         </View>
 
-        {/* ── Shrink→Expand Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>縮小→再拡大</Text>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>ON/OFF</Text>
-            <Switch
-              value={shrinkExpandEnabled}
-              onValueChange={handleShrinkExpandToggle}
-              trackColor={{false: BORDER, true: ACCENT}}
-              thumbColor={shrinkExpandEnabled ? '#fff' : '#888'}
-            />
-          </View>
-          {shrinkExpandEnabled && (
-            <View style={styles.qualityRow}>
-              <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>縮小率</Text>
-                <Text style={styles.qualityValue}>{shrinkExpandRate}%</Text>
-              </View>
-              <CustomSlider
-                style={styles.qualitySlider}
-                minimumValue={10}
-                maximumValue={90}
-                step={1}
-                value={shrinkExpandRate}
-                onValueChange={handleShrinkExpandRateChange}
-                minimumTrackTintColor={ACCENT}
-                maximumTrackTintColor={BORDER}
-                thumbTintColor={ACCENT}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* ── Multi-Compress Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>多重圧縮</Text>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>ON/OFF</Text>
-            <Switch
-              value={multiCompressEnabled}
-              onValueChange={handleMultiCompressToggle}
-              trackColor={{false: BORDER, true: ACCENT}}
-              thumbColor={multiCompressEnabled ? '#fff' : '#888'}
-            />
-          </View>
-          {multiCompressEnabled && (
-            <View style={styles.qualityRow}>
-              <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>圧縮回数</Text>
-                <Text style={styles.qualityValue}>{multiCompressCount}回</Text>
-              </View>
-              <CustomSlider
-                style={styles.qualitySlider}
-                minimumValue={1}
-                maximumValue={10}
-                step={1}
-                value={multiCompressCount}
-                onValueChange={handleMultiCompressCountChange}
-                minimumTrackTintColor={ACCENT}
-                maximumTrackTintColor={BORDER}
-                thumbTintColor={ACCENT}
-              />
-            </View>
-          )}
-        </View>
-
         {/* ── Format Conversion Section ── */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>出力フォーマット</Text>
@@ -849,6 +783,72 @@ const MainScreen = () => {
             </View>
           )}
         </View>
+        {/* ── Shrink→Expand Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>縮小→再拡大</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>ON/OFF</Text>
+            <Switch
+              value={shrinkExpandEnabled}
+              onValueChange={handleShrinkExpandToggle}
+              trackColor={{false: BORDER, true: ACCENT}}
+              thumbColor={shrinkExpandEnabled ? '#fff' : '#888'}
+            />
+          </View>
+          {shrinkExpandEnabled && (
+            <View style={styles.qualityRow}>
+              <View style={styles.qualityLabelRow}>
+                <Text style={styles.qualityLabel}>縮小率</Text>
+                <Text style={styles.qualityValue}>{shrinkExpandRate}%</Text>
+              </View>
+              <CustomSlider
+                style={styles.qualitySlider}
+                minimumValue={10}
+                maximumValue={90}
+                step={1}
+                value={shrinkExpandRate}
+                onValueChange={handleShrinkExpandRateChange}
+                minimumTrackTintColor={ACCENT}
+                maximumTrackTintColor={BORDER}
+                thumbTintColor={ACCENT}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* ── Multi-Compress Section ── */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>多重圧縮</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>ON/OFF</Text>
+            <Switch
+              value={multiCompressEnabled}
+              onValueChange={handleMultiCompressToggle}
+              trackColor={{false: BORDER, true: ACCENT}}
+              thumbColor={multiCompressEnabled ? '#fff' : '#888'}
+            />
+          </View>
+          {multiCompressEnabled && (
+            <View style={styles.qualityRow}>
+              <View style={styles.qualityLabelRow}>
+                <Text style={styles.qualityLabel}>圧縮回数</Text>
+                <Text style={styles.qualityValue}>{multiCompressCount}回</Text>
+              </View>
+              <CustomSlider
+                style={styles.qualitySlider}
+                minimumValue={1}
+                maximumValue={10}
+                step={1}
+                value={multiCompressCount}
+                onValueChange={handleMultiCompressCountChange}
+                minimumTrackTintColor={ACCENT}
+                maximumTrackTintColor={BORDER}
+                thumbTintColor={ACCENT}
+              />
+            </View>
+          )}
+        </View>
+
 
         {(selectedImage || processedImage) && (
           <TouchableOpacity
