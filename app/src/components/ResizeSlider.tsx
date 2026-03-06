@@ -30,7 +30,7 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
       setWidthText(String(Math.round(originalWidth! * value / 100)));
       setHeightText(String(Math.round(originalHeight! * value / 100)));
     }
-  }, [value, activeTab]);
+  }, [value, activeTab, hasOriginal, originalWidth, originalHeight]);
 
   const handleWidthChange = (text: string) => {
     setWidthText(text);
