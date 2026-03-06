@@ -26,6 +26,7 @@ const CustomSlider: React.FC<CustomSliderProps> = ({
 }) => {
   const trackWidth = useRef(0);
   const trackX = useRef(0);
+  const trackRef = useRef<View>(null);
 
   const clamp = (v: number) => {
     let clamped = Math.min(maximumValue, Math.max(minimumValue, v));
@@ -49,21 +50,23 @@ const CustomSlider: React.FC<CustomSliderProps> = ({
         onValueChange(getValueFromX(x));
       },
       onPanResponderMove: (evt) => {
-        const x = evt.nativeEvent.locationX;
+        const x = evt.nativeEvent.moveX - trackX.current;
         onValueChange(getValueFromX(x));
       },
     }),
   ).current;
 
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    trackWidth.current = e.nativeEvent.layout.width;
-    trackX.current = e.nativeEvent.layout.x;
+  const onLayout = useCallback((_e: LayoutChangeEvent) => {
+    trackRef.current?.measure((_x, _y, width, _height, pageX) => {
+      trackWidth.current = width;
+      trackX.current = pageX;
+    });
   }, []);
 
   const ratio = (value - minimumValue) / (maximumValue - minimumValue);
 
   return (
-    <View style={[styles.container, style]} onLayout={onLayout} {...panResponder.panHandlers}>
+    <View ref={trackRef} style={[styles.container, style]} onLayout={onLayout} {...panResponder.panHandlers}>
       <View style={styles.track}>
         <View style={[styles.trackFill, {flex: ratio, backgroundColor: minimumTrackTintColor}]} />
         <View style={[styles.trackEmpty, {flex: 1 - ratio, backgroundColor: maximumTrackTintColor}]} />
