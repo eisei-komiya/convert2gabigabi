@@ -33,7 +33,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
       const asset = result.assets[0];
       const isVideo =
         asset.type === 'video' ||
-        /\.(mp4|mov|avi|mkv|webm|m4v|3gp|flv|wmv)$/i.test(asset.uri);
+        /\.(mp4|mov|avi|mkv|webm|m4v|3gp|flv|wmv|mpg|mpeg)$/i.test(asset.uri);
       onImageSelect(asset.uri, isVideo ? 'video' : 'image');
     }
   };

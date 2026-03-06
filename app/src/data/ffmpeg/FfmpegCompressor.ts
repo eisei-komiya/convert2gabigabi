@@ -16,7 +16,7 @@ const DISCORD_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
  */
 function isVideoFile(uri: string): boolean {
   const lower = uri.toLowerCase();
-  return /\.(mp4|mov|avi|mkv|webm|m4v|3gp)$/.test(lower);
+  return /\.(mp4|mov|avi|mkv|webm|m4v|3gp|mpg|mpeg)$/.test(lower);
 }
 
 /**
