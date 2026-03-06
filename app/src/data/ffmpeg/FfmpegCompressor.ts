@@ -256,6 +256,10 @@ async function compressVideoToTarget(
     throw new Error(`FFmpeg 2パス目に失敗しました: ${logs}`);
   }
 
+  // 2パスエンコードの passlog 一時ファイルを削除
+  await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
+  await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
+
   let outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
   let outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   let currentOutputUri = outputUri;
@@ -289,6 +293,10 @@ async function compressVideoToTarget(
     if (!ReturnCode.isSuccess(await r1.getReturnCode())) continue;
     const r2 = await FFmpegKit.execute(retry2Cmd);
     if (!ReturnCode.isSuccess(await r2.getReturnCode())) continue;
+
+    // リトライの passlog 一時ファイルを削除
+    await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
+    await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
 
     const retryInfo = await FileSystem.getInfoAsync(retryOutputUri, { size: true });
     const retryBytes = (retryInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
