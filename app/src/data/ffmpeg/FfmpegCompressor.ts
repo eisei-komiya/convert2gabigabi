@@ -304,6 +304,9 @@ async function compressVideoToTarget(
       outputBytes = retryBytes;
       outInfo = retryInfo;
       currentOutputUri = retryOutputUri;
+    } else {
+      // 0バイトの無効な出力ファイルを削除してキャッシュに残らないようにする
+      await FileSystem.deleteAsync(retryOutputUri, { idempotent: true });
     }
   }
 
