@@ -289,16 +289,21 @@ export async function processWithFfmpeg(
         throw new Error(`FFmpeg多重圧縮(pass ${pass})に失敗しました: ${logs}`);
       }
 
-      // 前の一時ファイルを削除（最初の出力=outputUri は pass2 の後に削除）
-      await FileSystem.deleteAsync(currentInput, { idempotent: true });
+      // 前の一時ファイルを削除
+      // currentInput === outputUri の場合（pass2 の先頭）は outputUri を削除しない。
+      // moveAsync 完了前に outputUri を削除すると moveAsync 失敗時にデータが消失する
+      // リスクがある（Issue #195, #201）。
+      if (currentInput !== outputUri) {
+        await FileSystem.deleteAsync(currentInput, { idempotent: true });
+      }
       currentInput = passUri;
     }
 
     // 最終出力を outputUri にリネーム（move）
-    // currentInput === outputUri の場合（全パス失敗など）は自己コピーを避ける
-    if (currentInput !== outputUri) {
-      await FileSystem.moveAsync({ from: currentInput, to: outputUri });
-    }
+    // moveAsync の前に outputUri を削除しておくことで上書きを保証する。
+    // この時点で currentInput !== outputUri が保証されているため安全に削除できる。
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+    await FileSystem.moveAsync({ from: currentInput, to: outputUri });
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
