@@ -295,7 +295,10 @@ export async function processWithFfmpeg(
     }
 
     // 最終出力を outputUri にリネーム（move）
-    await FileSystem.moveAsync({ from: currentInput, to: outputUri });
+    // currentInput === outputUri の場合（全パス失敗など）は自己コピーを避ける
+    if (currentInput !== outputUri) {
+      await FileSystem.moveAsync({ from: currentInput, to: outputUri });
+    }
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
