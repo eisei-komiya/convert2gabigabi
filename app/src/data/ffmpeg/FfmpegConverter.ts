@@ -111,17 +111,53 @@ export async function convertImage(
       qualityArgs = '';
   }
 
-  const cmd = [
-    '-y',
-    '-i', `"${inputPath}"`,
-    qualityArgs,
-    '-update', '1',
-    '-frames:v', '1',
-    `"${outputPath}"`,
-  ].join(' ');
+  let session;
+  let rc;
 
-  const session = await FFmpegKit.execute(cmd);
-  const rc = await session.getReturnCode();
+  if (outputFormat === 'gif') {
+    // GIF はパレット生成の2パス方式でアニメーションを保持する
+    const palettePath = `${outputPath}.palette.png`;
+    const pass1 = [
+      '-y',
+      '-i', `"${inputPath}"`,
+      '-vf', '"fps=10,palettegen"',
+      `"${palettePath}"`,
+    ].join(' ');
+
+    const pass1Session = await FFmpegKit.execute(pass1);
+    const pass1Rc = await pass1Session.getReturnCode();
+
+    if (!ReturnCode.isSuccess(pass1Rc)) {
+      const logs = await extractErrorFromLogs(pass1Session);
+      throw new Error(`GIF パレット生成に失敗しました: ${logs}`);
+    }
+
+    const pass2 = [
+      '-y',
+      '-i', `"${inputPath}"`,
+      '-i', `"${palettePath}"`,
+      '-lavfi', '"fps=10 [x]; [x][1:v] paletteuse"',
+      `"${outputPath}"`,
+    ].join(' ');
+
+    session = await FFmpegKit.execute(pass2);
+    rc = await session.getReturnCode();
+
+    // パレットファイルをクリーンアップ（結果に関わらず）
+    await FileSystem.deleteAsync(`file://${palettePath}`, { idempotent: true });
+  } else {
+    const cmd = [
+      '-y',
+      '-i', `"${inputPath}"`,
+      qualityArgs,
+      '-update', '1',
+      '-frames:v', '1',
+      `"${outputPath}"`,
+    ].join(' ');
+
+    session = await FFmpegKit.execute(cmd);
+    rc = await session.getReturnCode();
+  }
 
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await extractErrorFromLogs(session);
