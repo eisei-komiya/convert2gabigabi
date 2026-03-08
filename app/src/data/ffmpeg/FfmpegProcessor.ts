@@ -1,12 +1,20 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, cleanupCachedTempFiles } from './ffmpegUtils';
 import { VideoFormat } from '../../state/store';
 
 export interface FfmpegProcessResult {
   outputUri: string;
   outputBytes: number;
+}
+
+/**
+ * アプリのキャッシュディレクトリパスを取得する。
+ */
+function getCacheDir(): string {
+  const dir = Paths.cache.uri;
+  return dir.endsWith('/') ? dir : dir + '/';
 }
 
 
@@ -23,36 +31,6 @@ const GABIGABI_QUALITY: Record<number, number> = {
   4: 25, // 圧縮率92% → q:v=25
   5: 30, // 圧縮率99% → q:v=30
 };
-
-/**
- * アプリのキャッシュディレクトリパスを取得する。
- * 新API (Paths.cache) を使用。
- */
-function getCacheDir(): string {
-  const dir = Paths.cache.uri;
-  // uri は "file:///data/..." 形式
-  return dir.endsWith('/') ? dir : dir + '/';
-}
-
-/**
- * キャッシュディレクトリ内の古い一時出力ファイル（_compressed_, _gabigabi_, _converted_ を含むもの）を削除する。
- */
-async function cleanupCachedTempFiles(): Promise<void> {
-  try {
-    const cacheDir = getCacheDir();
-    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
-    if (!dirInfo.exists) return;
-    const result = await FileSystem.readDirectoryAsync(cacheDir);
-    const tempPattern = /_(compressed|gabigabi|converted)_/;
-    await Promise.all(
-      result
-        .filter(name => tempPattern.test(name))
-        .map(name => FileSystem.deleteAsync(cacheDir + name, { idempotent: true })),
-    );
-  } catch {
-    // クリーンアップ失敗は無視して処理を続行する
-  }
-}
 
 /**
  * FFmpegを使って画像をガビガビ化する。
