@@ -289,6 +289,11 @@ async function compressVideoToTarget(
     }
   }
 
+  // リトライ成功により初回出力ファイルが不要になった場合は削除する (#206)
+  if (currentOutputUri !== outputUri) {
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+  }
+
   return {
     outputUri: currentOutputUri,
     outputBytes,
