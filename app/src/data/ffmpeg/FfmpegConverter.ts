@@ -1,7 +1,7 @@
 import { Paths } from 'expo-file-system';
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, cleanupCachedTempFiles } from './ffmpegUtils';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'bmp' | 'gif';
 
@@ -13,28 +13,6 @@ export interface ConvertOptions {
 export interface FfmpegConvertResult {
   outputUri: string;
   outputBytes: number;
-}
-
-
-/**
- * キャッシュディレクトリ内の古い一時出力ファイル（_compressed_, _gabigabi_, _converted_ を含むもの）を削除する。
- */
-async function cleanupCachedTempFiles(): Promise<void> {
-  try {
-    const cacheDirUri = Paths.cache.uri;
-    const cacheDir = cacheDirUri.endsWith('/') ? cacheDirUri : cacheDirUri + '/';
-    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
-    if (!dirInfo.exists) return;
-    const result = await FileSystem.readDirectoryAsync(cacheDir);
-    const tempPattern = /_(compressed|gabigabi|converted)_/;
-    await Promise.all(
-      result
-        .filter(name => tempPattern.test(name))
-        .map(name => FileSystem.deleteAsync(cacheDir + name, { idempotent: true })),
-    );
-  } catch {
-    // クリーンアップ失敗は無視して処理を続行する
-  }
 }
 
 /**
