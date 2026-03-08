@@ -1,7 +1,7 @@
 import { Paths } from 'expo-file-system';
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs, cleanupCachedTempFiles } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'bmp' | 'gif';
 
@@ -36,9 +36,7 @@ export async function convertImage(
     throw new Error('入力ファイルが空（0バイト）です');
   }
 
-  // 前回の一時ファイルをクリーンアップ
-  await cleanupCachedTempFiles();
-
+  // 前回の一時ファイルをクリーンアップ（#214: アプリ起動時に移動したため削除）
   const { outputFormat, quality = 0 } = options;
 
   const inputPath = inputUri.replace('file://', '');

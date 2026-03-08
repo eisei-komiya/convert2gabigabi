@@ -33,6 +33,7 @@ import {compressForDiscord} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
 import {FFmpegKit, FFprobeKit} from 'ffmpeg-kit-react-native';
 import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
+import {cleanupCachedTempFiles} from '../data/ffmpeg/ffmpegUtils';
 
 const FORMAT_OPTIONS: {label: string; value: ImageFormat}[] = [
   {label: 'JPEG', value: 'jpeg'},
@@ -270,6 +271,11 @@ const MainScreen = () => {
   const [fileInfo, setFileInfo] = useState<{name: string; size: string; width: number; height: number} | null>(null);
   const outputBytesRef = useRef(0);
 
+  // #214: アプリ起動時に一度だけ一時ファイルをクリーンアップする（変換開始時からの移動）
+  useEffect(() => {
+    cleanupCachedTempFiles();
+  }, []);
+
   useEffect(() => {
     if (!selectedImage) {
       setFileInfo(null);
@@ -433,6 +439,8 @@ const MainScreen = () => {
   const handleCancel = useCallback(async () => {
     try {
       await FFmpegKit.cancel();
+      // #216: キャンセル後に passlog などの一時ファイルを削除する
+      await cleanupCachedTempFiles();
     } catch (err) {
       console.warn('Cancel failed:', err);
     }
