@@ -92,6 +92,23 @@ const ImageModal: React.FC<ImageModalProps> = ({uri, visible, onClose}) => {
   const lastTranslateX = useRef(0);
   const lastTranslateY = useRef(0);
 
+  // #207: track animated values via refs instead of `any` cast
+  const scaleValueRef = useRef(1);
+  const translateXValueRef = useRef(0);
+  const translateYValueRef = useRef(0);
+  const initialDistanceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const scaleId = scale.addListener(({value}) => { scaleValueRef.current = value; });
+    const txId = translateX.addListener(({value}) => { translateXValueRef.current = value; });
+    const tyId = translateY.addListener(({value}) => { translateYValueRef.current = value; });
+    return () => {
+      scale.removeListener(scaleId);
+      translateX.removeListener(txId);
+      translateY.removeListener(tyId);
+    };
+  }, [scale, translateX, translateY]);
+
   const reset = useCallback(() => {
     scale.setValue(1);
     lastScale.current = 1;
@@ -123,12 +140,12 @@ const ImageModal: React.FC<ImageModalProps> = ({uri, visible, onClose}) => {
           const dx = touches[0].pageX - touches[1].pageX;
           const dy = touches[0].pageY - touches[1].pageY;
           const distance = Math.sqrt(dx * dx + dy * dy);
-          if ((panResponder as any)._initialDistance == null) {
-            (panResponder as any)._initialDistance = distance;
+          if (initialDistanceRef.current == null) {
+            initialDistanceRef.current = distance;
           }
           const newScale = Math.max(
             0.5,
-            Math.min(5, lastScale.current * (distance / (panResponder as any)._initialDistance)),
+            Math.min(5, lastScale.current * (distance / initialDistanceRef.current)),
           );
           scale.setValue(newScale);
         } else {
@@ -136,13 +153,13 @@ const ImageModal: React.FC<ImageModalProps> = ({uri, visible, onClose}) => {
           translateY.setValue(gestureState.dy);
         }
       },
-      onPanResponderRelease: (evt, gestureState) => {
-        (panResponder as any)._initialDistance = null;
-        lastScale.current = (scale as any)._value;
+      onPanResponderRelease: () => {
+        initialDistanceRef.current = null;
+        lastScale.current = scaleValueRef.current;
         translateX.flattenOffset();
         translateY.flattenOffset();
-        lastTranslateX.current = (translateX as any)._value;
-        lastTranslateY.current = (translateY as any)._value;
+        lastTranslateX.current = translateXValueRef.current;
+        lastTranslateY.current = translateYValueRef.current;
       },
     }),
   ).current;
