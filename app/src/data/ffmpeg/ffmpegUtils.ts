@@ -40,6 +40,14 @@ export function extractDurationFromLogs(logs: string): number | null {
 }
 
 /**
+ * キャッシュディレクトリのURIを返す（末尾スラッシュ付き）。
+ */
+export function getCacheDir(): string {
+  const dir = Paths.cache.uri;
+  return dir.endsWith('/') ? dir : dir + '/';
+}
+
+/**
  * キャッシュディレクトリ内の古い一時出力ファイルを削除する。
  * 対象: `_compressed_`, `_gabigabi_`, `_converted_`, `_passlog` を含むファイル名。
  * (#177) FfmpegCompressor/Converter/Processor の重複実装を統合。
@@ -47,8 +55,7 @@ export function extractDurationFromLogs(logs: string): number | null {
  */
 export async function cleanupCachedTempFiles(): Promise<void> {
   try {
-    const cacheDirUri = Paths.cache.uri;
-    const cacheDir = cacheDirUri.endsWith('/') ? cacheDirUri : cacheDirUri + '/';
+    const cacheDir = getCacheDir();
     const dirInfo = await FileSystem.getInfoAsync(cacheDir);
     if (!dirInfo.exists) return;
     const result = await FileSystem.readDirectoryAsync(cacheDir);
