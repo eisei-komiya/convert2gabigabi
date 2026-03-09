@@ -219,12 +219,17 @@ export async function processWithFfmpeg(
     `"${outPath}"`,
   ].join(' ');
 
-  const session = await FFmpegKit.execute(buildCmd(inputPath, outputPath));
-  const rc = await session.getReturnCode();
+  try {
+    const session = await FFmpegKit.execute(buildCmd(inputPath, outputPath));
+    const rc = await session.getReturnCode();
 
-  if (!ReturnCode.isSuccess(rc)) {
-    const logs = await extractErrorFromLogs(session);
-    throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+    if (!ReturnCode.isSuccess(rc)) {
+      const logs = await extractErrorFromLogs(session);
+      throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+    }
+  } catch (err) {
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+    throw err;
   }
 
   // 多重圧縮（2回目〜N回目）
