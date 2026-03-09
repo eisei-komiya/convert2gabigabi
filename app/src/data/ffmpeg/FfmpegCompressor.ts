@@ -230,6 +230,9 @@ async function compressVideoToTarget(
       const logs = await extractErrorFromLogs(pass2Session);
       throw new Error(`FFmpeg 2パス目に失敗しました: ${logs}`);
     }
+  } catch (err) {
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+    throw err;
   } finally {
     // 成功・失敗・キャンセルいずれの場合も passlog 一時ファイルを削除する (#234)
     await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
