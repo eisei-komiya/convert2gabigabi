@@ -3,7 +3,7 @@ module.exports = {
     {
       displayName: 'unit',
       preset: 'react-native',
-      testMatch: ['<rootDir>/__tests__/**/*.test.{ts,tsx}'],
+      testMatch: ['<rootDir>/__tests__/**/*.test.{ts,tsx}', '<rootDir>/src/__tests__/**/*.test.{ts,tsx}'],
     },
     {
       displayName: 'integration',
