@@ -219,23 +219,25 @@ async function compressVideoToTarget(
     `"${outputPath}"`,
   ].join(' ');
 
-  const pass1Session = await FFmpegKit.execute(pass1Cmd);
-  const pass1Rc = await pass1Session.getReturnCode();
-  if (!ReturnCode.isSuccess(pass1Rc)) {
-    const logs = await extractErrorFromLogs(pass1Session);
-    throw new Error(`FFmpeg 1パス目に失敗しました: ${logs}`);
-  }
+  try {
+    const pass1Session = await FFmpegKit.execute(pass1Cmd);
+    const pass1Rc = await pass1Session.getReturnCode();
+    if (!ReturnCode.isSuccess(pass1Rc)) {
+      const logs = await extractErrorFromLogs(pass1Session);
+      throw new Error(`FFmpeg 1パス目に失敗しました: ${logs}`);
+    }
 
-  const pass2Session = await FFmpegKit.execute(pass2Cmd);
-  const pass2Rc = await pass2Session.getReturnCode();
-  if (!ReturnCode.isSuccess(pass2Rc)) {
-    const logs = await extractErrorFromLogs(pass2Session);
-    throw new Error(`FFmpeg 2パス目に失敗しました: ${logs}`);
+    const pass2Session = await FFmpegKit.execute(pass2Cmd);
+    const pass2Rc = await pass2Session.getReturnCode();
+    if (!ReturnCode.isSuccess(pass2Rc)) {
+      const logs = await extractErrorFromLogs(pass2Session);
+      throw new Error(`FFmpeg 2パス目に失敗しました: ${logs}`);
+    }
+  } finally {
+    // 成功・失敗・キャンセルいずれの場合も passlog 一時ファイルを削除する (#234)
+    await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
+    await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
   }
-
-  // 2パスエンコードの passlog 一時ファイルを削除
-  await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
-  await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
 
   let outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
   let outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
@@ -267,13 +269,17 @@ async function compressVideoToTarget(
     ].join(' ');
 
     const r1 = await FFmpegKit.execute(retry1Cmd);
-    if (!ReturnCode.isSuccess(await r1.getReturnCode())) continue;
+    if (!ReturnCode.isSuccess(await r1.getReturnCode())) {
+      // passlog を確実に削除してから次のリトライへ
+      await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
+      await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
+      continue;
+    }
     const r2 = await FFmpegKit.execute(retry2Cmd);
-    if (!ReturnCode.isSuccess(await r2.getReturnCode())) continue;
-
-    // リトライの passlog 一時ファイルを削除
+    // リトライの passlog 一時ファイルを削除（成功・失敗いずれも）(#234)
     await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
     await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
+    if (!ReturnCode.isSuccess(await r2.getReturnCode())) continue;
 
     const retryInfo = await FileSystem.getInfoAsync(retryOutputUri, { size: true });
     const retryBytes = (retryInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
