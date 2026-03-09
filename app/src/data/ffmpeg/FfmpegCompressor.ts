@@ -1,7 +1,7 @@
 import { Paths } from 'expo-file-system';
 import { FFmpegKit, FFprobeKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs, cleanupCachedTempFiles } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 
 export interface CompressResult {
   outputUri: string;
@@ -56,9 +56,6 @@ async function compressImageToTarget(
   if (originalBytes === 0) {
     throw new Error('入力ファイルが空（0バイト）です');
   }
-
-  // 前回の一時ファイルをクリーンアップ
-  await cleanupCachedTempFiles();
 
   const inputPath = inputUri.replace('file://', '');
 
@@ -162,9 +159,6 @@ async function compressVideoToTarget(
     throw new Error('入力ファイルが空（0バイト）です');
   }
 
-  // 前回の一時ファイルをクリーンアップ
-  await cleanupCachedTempFiles();
-
   const inputPath = inputUri.replace('file://', '');
 
   if (originalBytes <= targetBytes) {
@@ -196,6 +190,10 @@ async function compressVideoToTarget(
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
   const passlogPath = outputPath.replace('.mp4', '_passlog');
+
+  // pass1 開始前に古い passlog ファイルを削除して再試行時の混入を防ぐ (#216)
+  await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
+  await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
 
   // 2パスエンコードで精度の高いビットレート制御
   const pass1Cmd = [

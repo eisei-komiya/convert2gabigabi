@@ -1,7 +1,7 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs, cleanupCachedTempFiles } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
 import { VideoFormat } from '../../state/store';
 
 export interface FfmpegProcessResult {
@@ -94,7 +94,6 @@ export async function processVideoWithFfmpeg(
     throw new Error('入力ファイルが空（0バイト）です');
   }
 
-  await cleanupCachedTempFiles();
 
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'video.mp4';
@@ -187,8 +186,7 @@ export async function processWithFfmpeg(
     throw new Error('入力ファイルが空（0バイト）です');
   }
 
-  // 前回の一時ファイルをクリーンアップ
-  await cleanupCachedTempFiles();
+  // 前回の一時ファイルをクリーンアップ（#214: アプリ起動時に移動したため削除）
 
   const inputPath = inputUri.replace('file://', '');
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
