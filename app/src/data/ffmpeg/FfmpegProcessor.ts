@@ -122,12 +122,18 @@ export async function processVideoWithFfmpeg(
     `"${outputPath}"`,
   ].join(' ');
 
-  const session = await FFmpegKit.execute(cmd);
-  const rc = await session.getReturnCode();
+  try {
+    const session = await FFmpegKit.execute(cmd);
+    const rc = await session.getReturnCode();
 
-  if (!ReturnCode.isSuccess(rc)) {
-    const logs = await extractErrorFromLogs(session);
-    throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+    if (!ReturnCode.isSuccess(rc)) {
+      const logs = await extractErrorFromLogs(session);
+      throw new Error(`FFmpeg処理に失敗しました: ${logs}`);
+    }
+  } catch (err) {
+    // エラー時に不完全な出力ファイルを削除する (#238)
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+    throw err;
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
@@ -231,39 +237,48 @@ export async function processWithFfmpeg(
   if (multiCompressEnabled && multiCompressCount > 1) {
     const totalPasses = Math.max(1, Math.min(10, multiCompressCount));
     let currentInput = outputUri;
+    let multiCompressSucceeded = false;
 
-    for (let pass = 2; pass <= totalPasses; pass++) {
-      const passSuffix = generateUniqueFileSuffix();
-      const passUri = `${cacheDir}${stem}_gabigabi_pass${pass}_${passSuffix}${ext}`;
-      const passInputPath = currentInput.replace('file://', '');
-      const passOutputPath = passUri.replace('file://', '');
+    try {
+      for (let pass = 2; pass <= totalPasses; pass++) {
+        const passSuffix = generateUniqueFileSuffix();
+        const passUri = `${cacheDir}${stem}_gabigabi_pass${pass}_${passSuffix}${ext}`;
+        const passInputPath = currentInput.replace('file://', '');
+        const passOutputPath = passUri.replace('file://', '');
 
-      // 多重圧縮では vf フィルターなしで再圧縮のみ
-      const passCmd = [
-        '-y',
-        '-i', `"${passInputPath}"`,
-        '-q:v', String(quality),
-        '-update', '1',
-        '-frames:v', '1',
-        `"${passOutputPath}"`,
-      ].join(' ');
+        // 多重圧縮では vf フィルターなしで再圧縮のみ
+        const passCmd = [
+          '-y',
+          '-i', `"${passInputPath}"`,
+          '-q:v', String(quality),
+          '-update', '1',
+          '-frames:v', '1',
+          `"${passOutputPath}"`,
+        ].join(' ');
 
-      const passSession = await FFmpegKit.execute(passCmd);
-      const passRc = await passSession.getReturnCode();
+        const passSession = await FFmpegKit.execute(passCmd);
+        const passRc = await passSession.getReturnCode();
 
-      if (!ReturnCode.isSuccess(passRc)) {
-        const logs = await extractErrorFromLogs(passSession);
-        throw new Error(`FFmpeg多重圧縮(pass ${pass})に失敗しました: ${logs}`);
+        if (!ReturnCode.isSuccess(passRc)) {
+          const logs = await extractErrorFromLogs(passSession);
+          throw new Error(`FFmpeg多重圧縮(pass ${pass})に失敗しました: ${logs}`);
+        }
+
+        // 前の一時ファイルを削除
+        // currentInput === outputUri の場合（pass2 の先頭）は outputUri を削除しない。
+        // moveAsync 完了前に outputUri を削除すると moveAsync 失敗時にデータが消失する
+        // リスクがある（Issue #195, #201）。
+        if (currentInput !== outputUri) {
+          await FileSystem.deleteAsync(currentInput, { idempotent: true });
+        }
+        currentInput = passUri;
       }
-
-      // 前の一時ファイルを削除
-      // currentInput === outputUri の場合（pass2 の先頭）は outputUri を削除しない。
-      // moveAsync 完了前に outputUri を削除すると moveAsync 失敗時にデータが消失する
-      // リスクがある（Issue #195, #201）。
-      if (currentInput !== outputUri) {
+      multiCompressSucceeded = true;
+    } finally {
+      // エラー時のみ中間一時ファイルを削除する (#237)
+      if (!multiCompressSucceeded && currentInput !== outputUri) {
         await FileSystem.deleteAsync(currentInput, { idempotent: true });
       }
-      currentInput = passUri;
     }
 
     // 最終出力を outputUri にリネーム（move）
