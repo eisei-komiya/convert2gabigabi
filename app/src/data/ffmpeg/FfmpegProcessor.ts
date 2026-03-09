@@ -1,20 +1,11 @@
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, getCacheDir } from './ffmpegUtils';
 import { VideoFormat } from '../../state/store';
 
 export interface FfmpegProcessResult {
   outputUri: string;
   outputBytes: number;
-}
-
-/**
- * アプリのキャッシュディレクトリパスを取得する。
- */
-function getCacheDir(): string {
-  const dir = Paths.cache.uri;
-  return dir.endsWith('/') ? dir : dir + '/';
 }
 
 
