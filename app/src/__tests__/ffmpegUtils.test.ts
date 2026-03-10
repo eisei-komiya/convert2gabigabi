@@ -3,6 +3,7 @@ import {
   extractErrorFromLogs,
   extractDurationFromLogs,
   getCacheDir,
+  cleanupCachedTempFiles,
 } from '../data/ffmpeg/ffmpegUtils';
 import { Paths } from 'expo-file-system';
 
@@ -119,5 +120,69 @@ describe('getCacheDir', () => {
   it('Paths.cache.uri が既に末尾スラッシュ付きなら重複しない', () => {
     jest.spyOn(Paths, 'cache', 'get').mockReturnValue({ uri: 'file:///cache/' } as any);
     expect(getCacheDir()).toBe('file:///cache/');
+  });
+});
+
+describe('cleanupCachedTempFiles', () => {
+  let getInfoAsync: jest.Mock;
+  let readDirectoryAsync: jest.Mock;
+  let deleteAsync: jest.Mock;
+
+  beforeEach(() => {
+    const FileSystem = require('expo-file-system/legacy');
+    getInfoAsync = FileSystem.getInfoAsync as jest.Mock;
+    readDirectoryAsync = FileSystem.readDirectoryAsync as jest.Mock;
+    deleteAsync = FileSystem.deleteAsync as jest.Mock;
+    jest.clearAllMocks();
+  });
+
+  it('キャッシュディレクトリが存在しない場合は何もしない', async () => {
+    getInfoAsync.mockResolvedValue({ exists: false });
+    await cleanupCachedTempFiles();
+    expect(readDirectoryAsync).not.toHaveBeenCalled();
+    expect(deleteAsync).not.toHaveBeenCalled();
+  });
+
+  it('対象パターンに一致するファイルを削除する', async () => {
+    getInfoAsync.mockResolvedValue({ exists: true });
+    readDirectoryAsync.mockResolvedValue([
+      'video_compressed_123.mp4',
+      'image_gabigabi_456.jpg',
+      'output_converted_789.png',
+      'video_passlog.log',
+    ]);
+    deleteAsync.mockResolvedValue(undefined);
+    await cleanupCachedTempFiles();
+    expect(deleteAsync).toHaveBeenCalledTimes(4);
+  });
+
+  it('対象外のファイルは削除しない', async () => {
+    getInfoAsync.mockResolvedValue({ exists: true });
+    readDirectoryAsync.mockResolvedValue([
+      'photo.jpg',
+      'document.pdf',
+      'video_compressed_123.mp4',
+    ]);
+    deleteAsync.mockResolvedValue(undefined);
+    await cleanupCachedTempFiles();
+    expect(deleteAsync).toHaveBeenCalledTimes(1);
+    expect(deleteAsync).toHaveBeenCalledWith(
+      expect.stringContaining('video_compressed_123.mp4'),
+      { idempotent: true },
+    );
+  });
+
+  it('deleteAsyncが失敗してもエラーを投げない', async () => {
+    getInfoAsync.mockResolvedValue({ exists: true });
+    readDirectoryAsync.mockResolvedValue(['video_gabigabi_123.mp4']);
+    deleteAsync.mockRejectedValue(new Error('delete failed'));
+    await expect(cleanupCachedTempFiles()).resolves.toBeUndefined();
+  });
+
+  it('空のキャッシュディレクトリでも正常終了する', async () => {
+    getInfoAsync.mockResolvedValue({ exists: true });
+    readDirectoryAsync.mockResolvedValue([]);
+    await cleanupCachedTempFiles();
+    expect(deleteAsync).not.toHaveBeenCalled();
   });
 });
