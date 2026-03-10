@@ -135,6 +135,7 @@ export async function convertImage(
 
   if (!ReturnCode.isSuccess(rc)) {
     const logs = await extractErrorFromLogs(session);
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
     throw new Error(`FFmpegフォーマット変換に失敗しました: ${logs}`);
   }
 
