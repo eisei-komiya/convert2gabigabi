@@ -575,12 +575,13 @@ const MainScreen = () => {
         url: `file://${filePath}`,
         type: mimeType,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // User cancelled share dialog
-      if (err?.message?.includes('User did not share') || err?.message?.includes('cancel')) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('User did not share') || message.includes('cancel')) {
         return;
       }
-      showError('エラー', `共有に失敗しました: ${String(err)}`);
+      showError('エラー', `共有に失敗しました: ${message}`);
     }
   };
 
