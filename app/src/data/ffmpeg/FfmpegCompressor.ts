@@ -1,7 +1,6 @@
-import { Paths } from 'expo-file-system';
 import { FFmpegKit, FFprobeKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, getCacheDir } from './ffmpegUtils';
 
 export interface CompressResult {
   outputUri: string;
@@ -71,8 +70,7 @@ async function compressImageToTarget(
   // forceJpeg が false の場合は入力ファイルの拡張子を保持する
   const inputExt = inputPath.split('.').pop()?.toLowerCase() ?? 'jpg';
   const outputExt = forceJpeg ? 'jpg' : inputExt;
-  const cacheDirUri = Paths.cache.uri;
-  const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
+  const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.${outputExt}`;
   const outputPath = outputUri.replace('file://', '');
@@ -184,8 +182,7 @@ async function compressVideoToTarget(
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
-  const cacheDirUri = Paths.cache.uri;
-  const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
+  const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');

@@ -1,7 +1,6 @@
-import { Paths } from 'expo-file-system';
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, getCacheDir } from './ffmpegUtils';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'bmp' | 'gif';
 
@@ -51,8 +50,7 @@ export async function convertImage(
     gif: '.gif',
   };
   const ext = extMap[outputFormat];
-  const cacheDirUri = Paths.cache.uri;
-  const cacheDir = cacheDirUri.endsWith("/") ? cacheDirUri : cacheDirUri + "/";
+  const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_converted_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
