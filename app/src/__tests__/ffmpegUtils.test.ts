@@ -2,13 +2,31 @@ import {
   generateUniqueFileSuffix,
   extractErrorFromLogs,
   extractDurationFromLogs,
+  getCacheDir,
 } from '../data/ffmpeg/ffmpegUtils';
+import { Paths } from 'expo-file-system';
 
 // Mock ffmpeg-kit-react-native
 jest.mock('ffmpeg-kit-react-native', () => ({
   FFmpegSession: jest.fn(),
   FFmpegKit: { execute: jest.fn() },
   ReturnCode: { isSuccess: jest.fn() },
+}));
+
+// Mock expo-file-system
+jest.mock('expo-file-system', () => ({
+  Paths: {
+    get cache() {
+      return { uri: 'file:///cache/' };
+    },
+  },
+}));
+
+// Mock expo-file-system/legacy
+jest.mock('expo-file-system/legacy', () => ({
+  getInfoAsync: jest.fn(),
+  readDirectoryAsync: jest.fn(),
+  deleteAsync: jest.fn(),
 }));
 
 describe('generateUniqueFileSuffix', () => {
@@ -80,5 +98,26 @@ describe('extractDurationFromLogs', () => {
   it('parses duration at the beginning of string', () => {
     const logs = 'Duration: 00:00:10.00';
     expect(extractDurationFromLogs(logs)).toBe(10);
+  });
+});
+
+describe('getCacheDir', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('末尾スラッシュ付きのURIを返す', () => {
+    const dir = getCacheDir();
+    expect(dir.endsWith('/')).toBe(true);
+  });
+
+  it('Paths.cache.uri が末尾スラッシュなしでも末尾スラッシュを付与する', () => {
+    jest.spyOn(Paths, 'cache', 'get').mockReturnValue({ uri: 'file:///cache' } as any);
+    expect(getCacheDir()).toBe('file:///cache/');
+  });
+
+  it('Paths.cache.uri が既に末尾スラッシュ付きなら重複しない', () => {
+    jest.spyOn(Paths, 'cache', 'get').mockReturnValue({ uri: 'file:///cache/' } as any);
+    expect(getCacheDir()).toBe('file:///cache/');
   });
 });
