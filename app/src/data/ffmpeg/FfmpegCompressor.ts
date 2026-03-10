@@ -279,7 +279,10 @@ async function compressVideoToTarget(
     // リトライの passlog 一時ファイルを削除（成功・失敗いずれも）(#234)
     await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
     await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
-    if (!ReturnCode.isSuccess(await r2.getReturnCode())) continue;
+    if (!ReturnCode.isSuccess(await r2.getReturnCode())) {
+      await FileSystem.deleteAsync(retryOutputUri, { idempotent: true });
+      continue;
+    }
 
     const retryInfo = await FileSystem.getInfoAsync(retryOutputUri, { size: true });
     const retryBytes = (retryInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
