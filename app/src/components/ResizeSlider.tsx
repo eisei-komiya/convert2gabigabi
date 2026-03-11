@@ -26,18 +26,18 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
 
   // Sync direct inputs when value or original dimensions change
   useEffect(() => {
-    if (hasOriginal && activeTab === 'resolution') {
-      setWidthText(String(Math.round(originalWidth! * value / 100)));
-      setHeightText(String(Math.round(originalHeight! * value / 100)));
+    if (hasOriginal && originalWidth != null && originalHeight != null && activeTab === 'resolution') {
+      setWidthText(String(Math.round(originalWidth * value / 100)));
+      setHeightText(String(Math.round(originalHeight * value / 100)));
     }
   }, [value, activeTab, hasOriginal, originalWidth, originalHeight]);
 
   const handleWidthChange = (text: string) => {
     setWidthText(text);
     const w = parseInt(text, 10);
-    if (hasOriginal && w > 0) {
-      const pct = Math.min(100, Math.max(1, Math.round((w / originalWidth!) * 100)));
-      setHeightText(String(Math.round(originalHeight! * pct / 100)));
+    if (hasOriginal && originalWidth != null && originalHeight != null && w > 0) {
+      const pct = Math.min(100, Math.max(1, Math.round((w / originalWidth) * 100)));
+      setHeightText(String(Math.round(originalHeight * pct / 100)));
       onValueChange(pct);
     }
   };
@@ -45,9 +45,9 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
   const handleHeightChange = (text: string) => {
     setHeightText(text);
     const h = parseInt(text, 10);
-    if (hasOriginal && h > 0) {
-      const pct = Math.min(100, Math.max(1, Math.round((h / originalHeight!) * 100)));
-      setWidthText(String(Math.round(originalWidth! * pct / 100)));
+    if (hasOriginal && originalWidth != null && originalHeight != null && h > 0) {
+      const pct = Math.min(100, Math.max(1, Math.round((h / originalHeight) * 100)));
+      setWidthText(String(Math.round(originalWidth * pct / 100)));
       onValueChange(pct);
     }
   };
@@ -93,9 +93,9 @@ const ResizeSlider: React.FC<ResizeSliderProps> = ({value, onValueChange, origin
             maximumTrackTintColor={BORDER}
             thumbTintColor={ACCENT}
           />
-          {hasOriginal && (
+          {hasOriginal && originalWidth != null && originalHeight != null && (
             <Text style={styles.resolutionHint}>
-              → {Math.round(originalWidth! * value / 100)} × {Math.round(originalHeight! * value / 100)} px
+              → {Math.round(originalWidth * value / 100)} × {Math.round(originalHeight * value / 100)} px
             </Text>
           )}
         </View>
