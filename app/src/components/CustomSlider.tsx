@@ -47,11 +47,24 @@ const CustomSlider: React.FC<CustomSliderProps> = ({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const x = evt.nativeEvent.locationX;
-        onValueChange(getValueFromX(x));
+        if (!isNaN(x)) {
+          onValueChange(getValueFromX(x));
+        }
       },
       onPanResponderMove: (evt) => {
+        // moveX は画面絶対座標のため trackX（ページ座標）との差分を取る必要があるが、
+        // measure() は非同期なので trackX が未取得の場合がある。
+        // locationX はコンポーネント相対座標で常に信頼できるため優先して使用する。
+        const locationX = evt.nativeEvent.locationX;
+        if (!isNaN(locationX) && locationX >= 0) {
+          onValueChange(getValueFromX(locationX));
+          return;
+        }
+        // フォールバック: moveX - trackX
         const x = evt.nativeEvent.moveX - trackX.current;
-        onValueChange(getValueFromX(x));
+        if (!isNaN(x)) {
+          onValueChange(getValueFromX(x));
+        }
       },
     }),
   ).current;
@@ -63,7 +76,8 @@ const CustomSlider: React.FC<CustomSliderProps> = ({
     });
   }, []);
 
-  const ratio = (value - minimumValue) / (maximumValue - minimumValue);
+  const rawRatio = (value - minimumValue) / (maximumValue - minimumValue);
+  const ratio = isNaN(rawRatio) ? 0 : Math.min(1, Math.max(0, rawRatio));
 
   return (
     <View ref={trackRef} style={[styles.container, style]} onLayout={onLayout} {...panResponder.panHandlers}>
