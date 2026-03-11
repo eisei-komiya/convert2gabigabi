@@ -1,5 +1,5 @@
 import React, {useRef, useCallback} from 'react';
-import {View, PanResponder, StyleSheet, LayoutChangeEvent} from 'react-native';
+import {View, PanResponder, StyleSheet, LayoutChangeEvent, ViewStyle} from 'react-native';
 
 interface CustomSliderProps {
   minimumValue: number;
@@ -10,7 +10,7 @@ interface CustomSliderProps {
   minimumTrackTintColor?: string;
   maximumTrackTintColor?: string;
   thumbTintColor?: string;
-  style?: any;
+  style?: ViewStyle;
 }
 
 const CustomSlider: React.FC<CustomSliderProps> = ({
