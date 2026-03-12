@@ -186,11 +186,13 @@ async function compressVideoToTarget(
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
   const outputPath = outputUri.replace('file://', '');
-  const passlogPath = outputPath.replace('.mp4', '_passlog');
+  const passlogFilesystemPath = outputPath.replace('.mp4', '_passlog');
+  const passlogUri = outputUri.replace('.mp4', '_passlog');
 
   // pass1 開始前に古い passlog ファイルを削除して再試行時の混入を防ぐ (#216)
-  await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
-  await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
+  // deleteAsync は file:// URI が必要なため passlogUri を使用する (#276)
+  await FileSystem.deleteAsync(`${passlogUri}-0.log`, { idempotent: true });
+  await FileSystem.deleteAsync(`${passlogUri}-0.log.mbtree`, { idempotent: true });
 
   // 2パスエンコードで精度の高いビットレート制御
   const pass1Cmd = [
@@ -199,7 +201,7 @@ async function compressVideoToTarget(
     '-c:v', 'libx264',
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '1',
-    '-passlogfile', `"${passlogPath}"`,
+    '-passlogfile', `"${passlogFilesystemPath}"`,
     '-an',
     '-f', 'null', '/dev/null',
   ].join(' ');
@@ -210,7 +212,7 @@ async function compressVideoToTarget(
     '-c:v', 'libx264',
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '2',
-    '-passlogfile', `"${passlogPath}"`,
+    '-passlogfile', `"${passlogFilesystemPath}"`,
     '-c:a', 'aac',
     '-b:a', '64k',
     `"${outputPath}"`,
@@ -235,8 +237,8 @@ async function compressVideoToTarget(
     throw err;
   } finally {
     // 成功・失敗・キャンセルいずれの場合も passlog 一時ファイルを削除する (#234)
-    await FileSystem.deleteAsync(`${passlogPath}-0.log`, { idempotent: true });
-    await FileSystem.deleteAsync(`${passlogPath}-0.log.mbtree`, { idempotent: true });
+    await FileSystem.deleteAsync(`${passlogUri}-0.log`, { idempotent: true });
+    await FileSystem.deleteAsync(`${passlogUri}-0.log.mbtree`, { idempotent: true });
   }
 
   let outInfo = await FileSystem.getInfoAsync(outputUri, { size: true });
@@ -253,6 +255,7 @@ async function compressVideoToTarget(
     const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.mp4`;
     const retryOutputPath = retryOutputUri.replace('file://', '');
     const retryPasslogPath = retryOutputPath.replace('.mp4', '_passlog');
+    const retryPasslogUri = retryOutputUri.replace('.mp4', '_passlog');
 
     const retry1Cmd = [
       '-y', '-i', `"${inputPath}"`,
@@ -271,14 +274,14 @@ async function compressVideoToTarget(
     const r1 = await FFmpegKit.execute(retry1Cmd);
     if (!ReturnCode.isSuccess(await r1.getReturnCode())) {
       // passlog を確実に削除してから次のリトライへ
-      await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
-      await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
+      await FileSystem.deleteAsync(`${retryPasslogUri}-0.log`, { idempotent: true });
+      await FileSystem.deleteAsync(`${retryPasslogUri}-0.log.mbtree`, { idempotent: true });
       continue;
     }
     const r2 = await FFmpegKit.execute(retry2Cmd);
     // リトライの passlog 一時ファイルを削除（成功・失敗いずれも）(#234)
-    await FileSystem.deleteAsync(`${retryPasslogPath}-0.log`, { idempotent: true });
-    await FileSystem.deleteAsync(`${retryPasslogPath}-0.log.mbtree`, { idempotent: true });
+    await FileSystem.deleteAsync(`${retryPasslogUri}-0.log`, { idempotent: true });
+    await FileSystem.deleteAsync(`${retryPasslogUri}-0.log.mbtree`, { idempotent: true });
     if (!ReturnCode.isSuccess(await r2.getReturnCode())) {
       await FileSystem.deleteAsync(retryOutputUri, { idempotent: true });
       continue;
