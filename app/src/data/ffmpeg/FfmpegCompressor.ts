@@ -139,14 +139,15 @@ async function compressImageToTarget(
 
 /**
  * 動画を指定バイト数以下にビットレート制御で圧縮する。
- * 出力形式は常に mp4 (h.264/aac) に固定される。
  *
- * @param inputUri    入力動画ファイルURI
- * @param targetBytes 目標ファイルサイズ（バイト）
+ * @param inputUri      入力動画ファイルURI
+ * @param targetBytes   目標ファイルサイズ（バイト）
+ * @param outputFormat  出力拡張子 (mp4, webm, mov, etc...)
  */
 async function compressVideoToTarget(
   inputUri: string,
   targetBytes: number,
+  outputFormat: string = 'mp4',
 ): Promise<CompressResult> {
   // 入力ファイルの存在確認とサイズチェック
   const inputInfo = await FileSystem.getInfoAsync(inputUri, { size: true });
@@ -186,36 +187,41 @@ async function compressVideoToTarget(
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
   const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
-  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.mp4`;
+  const outputUri = `${cacheDir}${stem}_compressed_${suffix}.${outputFormat}`;
   const outputPath = outputUri.replace('file://', '');
-  const passlogFilesystemPath = outputPath.replace('.mp4', '_passlog');
-  const passlogUri = outputUri.replace('.mp4', '_passlog');
+  const passlogFilesystemPath = outputPath.replace(`.${outputFormat}`, '_passlog');
+  const passlogUri = outputUri.replace(`.${outputFormat}`, '_passlog');
 
   // pass1 開始前に古い passlog ファイルを削除して再試行時の混入を防ぐ (#216)
   // deleteAsync は file:// URI が必要なため passlogUri を使用する (#276)
   await FileSystem.deleteAsync(`${passlogUri}-0.log`, { idempotent: true });
   await FileSystem.deleteAsync(`${passlogUri}-0.log.mbtree`, { idempotent: true });
 
+  // コーデック設定: webm の場合は libvpx-vp9/libopus, それ以外は libx264/aac
+  const isWebm = outputFormat.toLowerCase() === 'webm';
+  const vcodec = isWebm ? 'libvpx-vp9' : 'libx264';
+  const acodec = isWebm ? 'libopus' : 'aac';
+
   // 2パスエンコードで精度の高いビットレート制御
   const pass1Cmd = [
     '-y',
     '-i', `"${inputPath}"`,
-    '-c:v', 'libx264',
+    '-c:v', vcodec,
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '1',
     '-passlogfile', `"${passlogFilesystemPath}"`,
     '-an',
-    '-f', 'null', '/dev/null',
+    '-f', isWebm ? 'webm' : 'null', isWebm ? '/dev/null' : '/dev/null',
   ].join(' ');
 
   const pass2Cmd = [
     '-y',
     '-i', `"${inputPath}"`,
-    '-c:v', 'libx264',
+    '-c:v', vcodec,
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '2',
     '-passlogfile', `"${passlogFilesystemPath}"`,
-    '-c:a', 'aac',
+    '-c:a', acodec,
     '-b:a', '64k',
     `"${outputPath}"`,
   ].join(' ');
@@ -254,22 +260,22 @@ async function compressVideoToTarget(
     if (retryBitrate < 50) break;
 
     const retrySuffix = generateUniqueFileSuffix();
-    const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.mp4`;
+    const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.${outputFormat}`;
     const retryOutputPath = retryOutputUri.replace('file://', '');
-    const retryPasslogPath = retryOutputPath.replace('.mp4', '_passlog');
-    const retryPasslogUri = retryOutputUri.replace('.mp4', '_passlog');
+    const retryPasslogPath = retryOutputPath.replace(`.${outputFormat}`, '_passlog');
+    const retryPasslogUri = retryOutputUri.replace(`.${outputFormat}`, '_passlog');
 
     const retry1Cmd = [
       '-y', '-i', `"${inputPath}"`,
-      '-c:v', 'libx264', '-b:v', `${retryBitrate}k`,
+      '-c:v', vcodec, '-b:v', `${retryBitrate}k`,
       '-pass', '1', '-passlogfile', `"${retryPasslogPath}"`,
-      '-an', '-f', 'null', '/dev/null',
+      '-an', '-f', isWebm ? 'webm' : 'null', isWebm ? '/dev/null' : '/dev/null',
     ].join(' ');
     const retry2Cmd = [
       '-y', '-i', `"${inputPath}"`,
-      '-c:v', 'libx264', '-b:v', `${retryBitrate}k`,
+      '-c:v', vcodec, '-b:v', `${retryBitrate}k`,
       '-pass', '2', '-passlogfile', `"${retryPasslogPath}"`,
-      '-c:a', 'aac', '-b:a', '64k',
+      '-c:a', acodec, '-b:a', '64k',
       `"${retryOutputPath}"`,
     ].join(' ');
 
@@ -317,11 +323,15 @@ async function compressVideoToTarget(
  * Discord の10MB制限に合わせてファイルを圧縮する。
  * 画像・動画両対応。すでに10MB以下の場合は元のURIをそのまま返す。
  *
- * @param inputUri 入力ファイルのfile:// URI
+ * @param inputUri      入力ファイルのfile:// URI
+ * @param videoFormat   動画の場合の出力フォーマット
  */
-export async function compressForDiscord(inputUri: string): Promise<CompressResult> {
+export async function compressForDiscord(
+  inputUri: string,
+  videoFormat: string = 'mp4',
+): Promise<CompressResult> {
   if (isVideoFile(inputUri)) {
-    return compressVideoToTarget(inputUri, DISCORD_MAX_BYTES);
+    return compressVideoToTarget(inputUri, DISCORD_MAX_BYTES, videoFormat);
   } else {
     // Discord 送信用: JPEG に変換して圧縮（互換性優先）
     return compressImageToTarget(inputUri, DISCORD_MAX_BYTES, true);
@@ -331,15 +341,17 @@ export async function compressForDiscord(inputUri: string): Promise<CompressResu
 /**
  * 任意の目標サイズにファイルを圧縮する汎用関数。
  *
- * @param inputUri    入力ファイルのfile:// URI
- * @param targetBytes 目標ファイルサイズ（バイト）
+ * @param inputUri      入力ファイルのfile:// URI
+ * @param targetBytes   目標ファイルサイズ（バイト）
+ * @param videoFormat   動画の場合の出力フォーマット
  */
 export async function compressToTargetSize(
   inputUri: string,
   targetBytes: number,
+  videoFormat: string = 'mp4',
 ): Promise<CompressResult> {
   if (isVideoFile(inputUri)) {
-    return compressVideoToTarget(inputUri, targetBytes);
+    return compressVideoToTarget(inputUri, targetBytes, videoFormat);
   } else {
     return compressImageToTarget(inputUri, targetBytes);
   }
