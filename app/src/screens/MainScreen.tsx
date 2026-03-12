@@ -664,18 +664,16 @@ const MainScreen = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <View style={{flex: 1}}>
-            {/* 左側のスペースを最小限に */}
+          <View style={{flexDirection: 'column', alignItems: 'center', flex: 1}}>
+            <Text style={styles.appName}>GabiGabi</Text>
+            <Text style={styles.appSubtitle}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
           </View>
-          <View style={{flex: 8, alignItems: 'center'}}>
-            <Text style={styles.appName} numberOfLines={1}>GabiGabi</Text>
-            <Text style={styles.appSubtitle} numberOfLines={1}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
-          </View>
-          <View style={{flex: 1, alignItems: 'flex-end'}}>
-            <TouchableOpacity onPress={() => setAboutVisible(true)}>
-              <Text style={{fontSize: 20, color: '#aaa'}}>ℹ️</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            onPress={() => setAboutVisible(true)} 
+            style={{position: 'absolute', right: 0, padding: 8}}
+          >
+            <Text style={{fontSize: 20, color: '#aaa'}}>ℹ️</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
