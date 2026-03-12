@@ -664,9 +664,9 @@ const MainScreen = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <View style={{flexDirection: 'column', alignItems: 'center', flex: 1}}>
-            <Text style={styles.appName}>GabiGabi</Text>
-            <Text style={styles.appSubtitle}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
+          <View style={{flexDirection: 'column', alignItems: 'center', flex: 1, paddingHorizontal: 30}}>
+            <Text style={styles.appName} numberOfLines={1} adjustsFontSizeToFit>GabiGabi</Text>
+            <Text style={styles.appSubtitle} numberOfLines={1} adjustsFontSizeToFit>画像・動画ガビガビ化&指定サイズ圧縮</Text>
           </View>
           <TouchableOpacity 
             onPress={() => setAboutVisible(true)} 
@@ -1158,9 +1158,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   appSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: TEXT_SECONDARY,
     marginTop: 2,
+    textAlign: 'center',
   },
 
   /* before/after row */
