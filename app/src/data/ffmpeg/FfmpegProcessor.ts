@@ -35,13 +35,26 @@ const GABIGABI_QUALITY: Record<number, number> = {
 /**
  * ガビガビレベルに対応するH.264 CRF値（23=標準品質, 51=最低品質）
  */
-const GABIGABI_CRF: Record<number, number> = {
+const GABIGABI_CRF_H264: Record<number, number> = {
   0: 23, // ほぼ劣化なし
   1: 35,
   2: 40,
   3: 45,
   4: 48,
   5: 51, // 最低品質
+};
+
+/**
+ * ガビガビレベルに対応するVP9 CRF値（0〜63、33=標準品質, 63=最低品質）
+ * VP9はH.264と異なりCRF範囲が0〜63のため専用テーブルを使用する。
+ */
+const GABIGABI_CRF_VP9: Record<number, number> = {
+  0: 33, // ほぼ劣化なし
+  1: 45,
+  2: 50,
+  3: 55,
+  4: 60,
+  5: 63, // 最低品質
 };
 
 
@@ -96,7 +109,9 @@ export async function processVideoWithFfmpeg(
 
   if (__DEV__) console.log('[FFmpeg] video outputPath:', outputPath);
 
-  const crf = GABIGABI_CRF[gabigabiLevel] ?? 40;
+  const crf = outputFormat === 'webm'
+    ? (GABIGABI_CRF_VP9[gabigabiLevel] ?? 50)
+    : (GABIGABI_CRF_H264[gabigabiLevel] ?? 40);
   const scale = scalePct / 100;
 
   const codecArgs = VIDEO_FORMAT_CODECS[outputFormat] ?? VIDEO_FORMAT_CODECS.mp4;
