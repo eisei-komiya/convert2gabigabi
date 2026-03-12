@@ -257,6 +257,7 @@ export async function processWithFfmpeg(
     const totalPasses = Math.max(1, Math.min(10, multiCompressCount));
     let currentInput = outputUri;
 
+    let finalTempUri: string | null = null;
     try {
       for (let pass = 2; pass <= totalPasses; pass++) {
         const passSuffix = generateUniqueFileSuffix();
@@ -290,19 +291,23 @@ export async function processWithFfmpeg(
           await FileSystem.deleteAsync(currentInput, { idempotent: true });
         }
         currentInput = passUri;
+        finalTempUri = passUri;
+      }
+
+      // 最終出力を outputUri にリネーム（move）
+      // moveAsync の前に outputUri を削除しておくことで上書きを保証する。
+      // この時点で currentInput !== outputUri が保証されているため安全に削除できる。
+      if (finalTempUri) {
+        await FileSystem.deleteAsync(outputUri, { idempotent: true });
+        await FileSystem.moveAsync({ from: finalTempUri, to: outputUri });
+        finalTempUri = null; // move 成功
       }
     } finally {
-      // エラー発生時に中間一時ファイルが残存しないようクリーンアップする
-      if (currentInput !== outputUri) {
-        await FileSystem.deleteAsync(currentInput, { idempotent: true });
+      // エラー発生時、または move 失敗時に残存した一時ファイルをクリーンアップする
+      if (finalTempUri && finalTempUri !== outputUri) {
+        await FileSystem.deleteAsync(finalTempUri, { idempotent: true });
       }
     }
-
-    // 最終出力を outputUri にリネーム（move）
-    // moveAsync の前に outputUri を削除しておくことで上書きを保証する。
-    // この時点で currentInput !== outputUri が保証されているため安全に削除できる。
-    await FileSystem.deleteAsync(outputUri, { idempotent: true });
-    await FileSystem.moveAsync({ from: currentInput, to: outputUri });
   }
 
   const info = await FileSystem.getInfoAsync(outputUri, { size: true });
