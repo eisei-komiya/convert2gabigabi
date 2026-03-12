@@ -343,6 +343,24 @@ describe('processVideoWithFfmpeg', () => {
     });
   });
 
+  // ── gabigabiLevel → CRF mapping (webm/VP9) ──────────────────────────────
+  describe('gabigabiLevel → CRF mapping (webm/VP9)', () => {
+    const cases: [number, number][] = [
+      [0, 33],
+      [1, 45],
+      [2, 50],
+      [3, 55],
+      [4, 60],
+      [5, 63],
+    ];
+
+    test.each(cases)('gabigabiLevel=%i → -crf %i (VP9)', async (level, expectedCrf) => {
+      setupFileInfo();
+      await processVideoWithFfmpeg('file:///input/vid.webm', 100, level, 'webm');
+      expect(capturedCmd()).toContain(`-crf ${expectedCrf}`);
+    });
+  });
+
   // ── scale vf ───────────────────────────────────────────────────────────
   it('includes scale vf for resize at 50%', async () => {
     setupFileInfo();
