@@ -243,9 +243,9 @@ async function compressVideoToTarget(
   let outputBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   let currentOutputUri = outputUri;
 
-  // 出力サイズ検証: 目標を超えていたらビットレートを下げてリトライ（最大3回）
+  // 出力サイズ検証: 目標を超えていたらビットレートを下げてリトライ（最大10回）
   let retryBitrate = videoBitrateKbps;
-  for (let attempt = 0; attempt < 3 && outputBytes > targetBytes; attempt++) {
+  for (let attempt = 0; attempt < 10 && outputBytes > targetBytes; attempt++) {
     retryBitrate = Math.floor(retryBitrate * 0.80);
     if (retryBitrate < 50) break;
 
