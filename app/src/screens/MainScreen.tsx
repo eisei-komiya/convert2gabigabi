@@ -664,8 +664,10 @@ const MainScreen = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <View style={{flex: 1}} />
-          <View style={{alignItems: 'center', flex: 3}}>
+          <View style={{flex: 1}}>
+            {/* 左側のスペースを最小限に */}
+          </View>
+          <View style={{flex: 8, alignItems: 'center'}}>
             <Text style={styles.appName} numberOfLines={1}>GabiGabi</Text>
             <Text style={styles.appSubtitle} numberOfLines={1}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
           </View>
