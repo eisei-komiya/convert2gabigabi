@@ -199,14 +199,32 @@ async function compressVideoToTarget(
 
   // コーデック設定: webm の場合は libvpx-vp9/libopus, それ以外は libx264/aac
   const isWebm = outputFormat.toLowerCase() === 'webm';
-  const vcodec = isWebm ? 'libvpx-vp9' : 'libx264';
+  let vcodec = isWebm ? 'libvpx-vp9' : 'libx264';
   const acodec = isWebm ? 'libopus' : 'aac';
+
+  // Android ハードウェア加速 (MediaCodec) の試行
+  // H.264 かつ Android 環境（ffmpeg-kit-react-native が利用可能と想定）の場合
+  if (!isWebm) {
+    try {
+      const hardwareConfig = await FFmpegKit.execute('-encoders');
+      const output = await hardwareConfig.getOutput();
+      if (output.includes('h264_mediacodec')) {
+        vcodec = 'h264_mediacodec';
+      }
+    } catch (e) {
+      // エンコーダ一覧の取得に失敗した場合はデフォルトの libx264 を使用
+    }
+  }
+
+  // プリセット設定 (H.264 libx264 の場合のみ)
+  const preset = (vcodec === 'libx264') ? ['-preset', 'superfast'] : [];
 
   // 2パスエンコードで精度の高いビットレート制御
   const pass1Cmd = [
     '-y',
     '-i', `"${inputPath}"`,
     '-c:v', vcodec,
+    ...preset,
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '1',
     '-passlogfile', `"${passlogFilesystemPath}"`,
@@ -218,6 +236,7 @@ async function compressVideoToTarget(
     '-y',
     '-i', `"${inputPath}"`,
     '-c:v', vcodec,
+    ...preset,
     '-b:v', `${videoBitrateKbps}k`,
     '-pass', '2',
     '-passlogfile', `"${passlogFilesystemPath}"`,
@@ -255,9 +274,17 @@ async function compressVideoToTarget(
 
   // 出力サイズ検証: 目標を超えていたらビットレートを下げてリトライ（最大10回）
   let retryBitrate = videoBitrateKbps;
+  let scaleFactor = 1.0;
   for (let attempt = 0; attempt < 10 && outputBytes > targetBytes; attempt++) {
     retryBitrate = Math.floor(retryBitrate * 0.80);
     if (retryBitrate < 50) break;
+
+    // 3回リトライしてもダメな場合は段階的にリサイズ (0.75x) を適用
+    if (attempt >= 3) {
+      scaleFactor *= 0.75;
+    }
+
+    const scaleFilter = scaleFactor < 1.0 ? ['-vf', `scale=iw*${scaleFactor.toFixed(2)}:ih*${scaleFactor.toFixed(2)}`] : [];
 
     const retrySuffix = generateUniqueFileSuffix();
     const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.${outputFormat}`;
@@ -267,13 +294,19 @@ async function compressVideoToTarget(
 
     const retry1Cmd = [
       '-y', '-i', `"${inputPath}"`,
-      '-c:v', vcodec, '-b:v', `${retryBitrate}k`,
+      '-c:v', vcodec,
+      ...preset,
+      ...scaleFilter,
+      '-b:v', `${retryBitrate}k`,
       '-pass', '1', '-passlogfile', `"${retryPasslogPath}"`,
       '-an', '-f', isWebm ? 'webm' : 'null', isWebm ? '/dev/null' : '/dev/null',
     ].join(' ');
     const retry2Cmd = [
       '-y', '-i', `"${inputPath}"`,
-      '-c:v', vcodec, '-b:v', `${retryBitrate}k`,
+      '-c:v', vcodec,
+      ...preset,
+      ...scaleFilter,
+      '-b:v', `${retryBitrate}k`,
       '-pass', '2', '-passlogfile', `"${retryPasslogPath}"`,
       '-c:a', acodec, '-b:a', '64k',
       `"${retryOutputPath}"`,
