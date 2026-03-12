@@ -139,6 +139,7 @@ async function compressImageToTarget(
 
 /**
  * 動画を指定バイト数以下にビットレート制御で圧縮する。
+ * 出力形式は常に mp4 (h.264/aac) に固定される。
  *
  * @param inputUri    入力動画ファイルURI
  * @param targetBytes 目標ファイルサイズ（バイト）
