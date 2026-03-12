@@ -665,9 +665,9 @@ const MainScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={{flex: 1}} />
-          <View style={{alignItems: 'center'}}>
-            <Text style={styles.appName}>GabiGabi</Text>
-            <Text style={styles.appSubtitle}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
+          <View style={{alignItems: 'center', flex: 3}}>
+            <Text style={styles.appName} numberOfLines={1}>GabiGabi</Text>
+            <Text style={styles.appSubtitle} numberOfLines={1}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
           </View>
           <View style={{flex: 1, alignItems: 'flex-end'}}>
             <TouchableOpacity onPress={() => setAboutVisible(true)}>
