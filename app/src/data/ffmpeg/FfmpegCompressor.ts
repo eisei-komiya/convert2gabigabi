@@ -305,6 +305,13 @@ async function compressVideoToTarget(
     await FileSystem.deleteAsync(outputUri, { idempotent: true });
   }
 
+  // リトライ後も目標サイズを超えている場合はエラーを投げてサイレント超過を防ぐ (#286)
+  if (outputBytes > targetBytes) {
+    await FileSystem.deleteAsync(currentOutputUri, { idempotent: true });
+    const targetMB = Math.round(targetBytes / (1024 * 1024));
+    throw new Error(`リトライを繰り返しましたが、目標サイズ（${targetMB}MB）以下に圧縮できませんでした。`);
+  }
+
   return {
     outputUri: currentOutputUri,
     outputBytes,
