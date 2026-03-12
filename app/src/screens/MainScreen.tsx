@@ -637,7 +637,7 @@ const MainScreen = () => {
         <View style={styles.headerRow}>
           <View style={{flex: 1}} />
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.appName}>convert2gabigabi</Text>
+            <Text style={styles.appName}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
             <Text style={styles.appSubtitle}>画像リサイズツール</Text>
           </View>
           <View style={{flex: 1, alignItems: 'flex-end'}}>
@@ -652,7 +652,7 @@ const MainScreen = () => {
       <Modal visible={aboutVisible} transparent animationType="fade" onRequestClose={() => setAboutVisible(false)}>
         <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24}}>
           <View style={{backgroundColor: '#1e1e1e', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360}}>
-            <Text style={{color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center'}}>convert2gabigabi</Text>
+            <Text style={{color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center'}}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>画像・動画の変換・圧縮・ガビガビ化ツール</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>ライセンス: GPL v3</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>FFmpeg / FFmpegKit を使用しています</Text>
