@@ -94,7 +94,7 @@ export async function processVideoWithFfmpeg(
   const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}.${outputFormat}`;
   const outputPath = outputUri.replace('file://', '');
 
-  console.log('[FFmpeg] video outputPath:', outputPath);
+  if (__DEV__) console.log('[FFmpeg] video outputPath:', outputPath);
 
   const crf = GABIGABI_CRF[gabigabiLevel] ?? 40;
   const scale = scalePct / 100;
@@ -195,7 +195,7 @@ export async function processWithFfmpeg(
   const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
   const outputPath = outputUri.replace('file://', '');
 
-  console.log('[FFmpeg] outputPath:', outputPath);
+  if (__DEV__) console.log('[FFmpeg] outputPath:', outputPath);
 
   const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
   const scale = scalePct / 100;
