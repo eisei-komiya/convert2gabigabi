@@ -664,16 +664,16 @@ const MainScreen = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <View style={{flex: 1}} />
-          <View style={{alignItems: 'center'}}>
-            <Text style={styles.appName}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
-            <Text style={styles.appSubtitle}>画像リサイズツール</Text>
+          <View style={{flexDirection: 'column', alignItems: 'center', flex: 1, paddingHorizontal: 30}}>
+            <Text style={styles.appName} numberOfLines={1} adjustsFontSizeToFit>GabiGabi</Text>
+            <Text style={styles.appSubtitle} numberOfLines={1} adjustsFontSizeToFit>画像・動画ガビガビ化&指定サイズ圧縮</Text>
           </View>
-          <View style={{flex: 1, alignItems: 'flex-end'}}>
-            <TouchableOpacity onPress={() => setAboutVisible(true)}>
-              <Text style={{fontSize: 20, color: '#aaa'}}>ℹ️</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            onPress={() => setAboutVisible(true)} 
+            style={{position: 'absolute', right: 0, padding: 8}}
+          >
+            <Text style={{fontSize: 20, color: '#aaa'}}>ℹ️</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -681,7 +681,8 @@ const MainScreen = () => {
       <Modal visible={aboutVisible} transparent animationType="fade" onRequestClose={() => setAboutVisible(false)}>
         <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24}}>
           <View style={{backgroundColor: '#1e1e1e', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360}}>
-            <Text style={{color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center'}}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
+            <Text style={{color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 4, textAlign: 'center'}}>GabiGabi</Text>
+            <Text style={{color: '#ccc', fontSize: 14, marginBottom: 16, textAlign: 'center'}}>画像・動画ガビガビ化&指定サイズ圧縮</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>画像・動画の変換・圧縮・ガビガビ化ツール</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>ライセンス: GPL v3</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>FFmpeg / FFmpegKit を使用しています</Text>
@@ -1157,9 +1158,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   appSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
     color: TEXT_SECONDARY,
     marginTop: 2,
+    textAlign: 'center',
   },
 
   /* before/after row */
