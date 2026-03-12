@@ -623,7 +623,7 @@ const MainScreen = () => {
     setIsProcessing(true);
     setProcessingAction('targetSize');
     try {
-      const result = await compressToTargetSize(selectedImage, targetBytes);
+      const result = await compressToTargetSize(selectedImage, targetBytes, videoOutputFormat);
       setProcessedImage(result.outputUri);
       outputBytesRef.current = result.outputBytes;
     } catch (err) {
@@ -729,17 +729,17 @@ const MainScreen = () => {
             <PreviewCard
               label="AFTER"
               uri={processedImage}
-              mediaType="image"
+              mediaType={selectedMediaType === 'video' ? 'video' : 'image'}
               placeholder={selectedImage ? '変換後' : '—'}
               onPickerPress={undefined}
               onImagePress={handleImagePress}
             />
             {selectedImage && fileInfo && (
               <View style={styles.infoBlock}>
-                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? (fileInfo.name.replace(/\.[^.]+$/, '') + '.' + (outputFormat === 'jpeg' ? 'jpg' : outputFormat)) : '—'}</Text>
+                <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="middle">📄 {processedImage ? processedImage.split('/').pop() : '—'}</Text>
                 <Text style={styles.infoText}>{processedImage ? formatBytes(outputBytesRef.current) : '変換後に表示'}</Text>
                 <Text style={styles.infoText}>{Math.round(fileInfo.width * resizePercent / 100)} × {Math.round(fileInfo.height * resizePercent / 100)} px</Text>
-                <Text style={styles.infoText}>🏷 {outputFormat.toUpperCase()}</Text>
+                <Text style={styles.infoText}>🏷 {processedImage ? (processedImage.split('.').pop()?.toUpperCase() ?? outputFormat.toUpperCase()) : outputFormat.toUpperCase()}</Text>
               </View>
             )}
           </View>
