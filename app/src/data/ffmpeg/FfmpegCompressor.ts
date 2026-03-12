@@ -178,7 +178,8 @@ async function compressVideoToTarget(
   const videoBitrateKbps = Math.floor(targetBits / durationSec / 1000) - audioBitrateKbps;
 
   if (videoBitrateKbps < 50) {
-    throw new Error('動画が長すぎて10MB以下には圧縮できません');
+    const targetMB = Math.round(targetBytes / (1024 * 1024));
+    throw new Error(`動画が長すぎて${targetMB}MB以下には圧縮できません`);
   }
 
   const stem = inputPath.split('/').pop()?.replace(/\.[^.]+$/, '') ?? 'video';
