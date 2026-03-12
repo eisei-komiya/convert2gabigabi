@@ -18,6 +18,7 @@ import {
   Dimensions,
   Linking,
   Switch,
+  TextInput,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import Share from 'react-native-share';
@@ -27,9 +28,9 @@ import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import ErrorModal from '../components/ErrorModal';
 import {useAppStore} from '../state/store';
-import {VideoFormat} from '../state/store';
+import {VideoFormat, ConvertMethod, SizeUnit} from '../state/store';
 import {resizeImage} from '../domain/useResizeImage';
-import {compressForDiscord} from '../domain/useDiscordCompress';
+import {compressForDiscord, compressToTargetSize} from '../domain/useDiscordCompress';
 import {convertImage, formatBytes, ImageFormat} from '../domain/convertImage';
 import {FFmpegKit, FFprobeKit} from 'ffmpeg-kit-react-native';
 import {processVideoWithFfmpeg} from '../data/ffmpeg/FfmpegProcessor';
@@ -75,6 +76,13 @@ const TEMPLATE_SETTINGS: Record<number, {
   4: {resizePercent: 25,  compressionRate: 99, shrinkExpandEnabled: true,  shrinkExpandRate: 50, multiCompressEnabled: false, multiCompressCount: 3},
   5: {resizePercent: 5,   compressionRate: 99, shrinkExpandEnabled: true,  shrinkExpandRate: 50, multiCompressEnabled: true,  multiCompressCount: 3},
 };
+
+const TARGET_SIZE_TEMPLATES: {label: string; value: string; unit: SizeUnit}[] = [
+  {label: 'Discord 10MB', value: '10', unit: 'MB'},
+  {label: 'Discord 50MB', value: '50', unit: 'MB'},
+  {label: 'メール 5MB', value: '5', unit: 'MB'},
+  {label: '100KB', value: '100', unit: 'KB'},
+];
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
@@ -254,6 +262,9 @@ const MainScreen = () => {
     shrinkExpandRate,
     multiCompressEnabled,
     multiCompressCount,
+    convertMethod,
+    targetSizeValue,
+    targetSizeUnit,
     setSelectedImage,
     setResizePercent,
     setProcessedImage,
@@ -266,6 +277,9 @@ const MainScreen = () => {
     setShrinkExpandRate,
     setMultiCompressEnabled,
     setMultiCompressCount,
+    setConvertMethod,
+    setTargetSizeValue,
+    setTargetSizeUnit,
   } = useAppStore();
 
   const [errorModal, setErrorModal] = useState<{visible: boolean; title: string; message: string}>({
@@ -274,7 +288,7 @@ const MainScreen = () => {
     message: '',
   });
 
-  const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'discord' | null>(null);
+  const [processingAction, setProcessingAction] = useState<'gabigabi' | 'convert' | 'targetSize' | null>(null);
 
   // #80: selected media type
   const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
@@ -592,26 +606,40 @@ const MainScreen = () => {
     outputBytesRef.current = 0;
   };
 
-  const handleDiscordCompress = async () => {
-    if (!selectedImage) {
+  const handleTargetSizeProcess = async () => {
+    if (!selectedImage) return;
+    
+    const val = parseFloat(targetSizeValue);
+    if (isNaN(val) || val <= 0) {
+      Alert.alert('エラー', '有効な目標サイズを入力してください');
       return;
     }
+    
+    let targetBytes = val;
+    if (targetSizeUnit === 'KB') targetBytes *= 1024;
+    else if (targetSizeUnit === 'MB') targetBytes *= 1024 * 1024;
+    else if (targetSizeUnit === 'GB') targetBytes *= 1024 * 1024 * 1024;
+    
     setIsProcessing(true);
-    setProcessingAction('discord');
+    setProcessingAction('targetSize');
     try {
-      const result = await compressForDiscord(selectedImage);
+      const result = await compressToTargetSize(selectedImage, targetBytes);
       setProcessedImage(result.outputUri);
       outputBytesRef.current = result.outputBytes;
-      
     } catch (err) {
       const msg = String(err);
       if (!msg.includes('cancel') && !msg.includes('Cancel')) {
-        showError('エラー', `Discord圧縮に失敗しました: ${msg}`);
+        showError('エラー', `指定サイズ圧縮に失敗しました: ${msg}`);
       }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
     }
+  };
+
+  const handleTargetSizeTemplateSelect = (tmpl: typeof TARGET_SIZE_TEMPLATES[0]) => {
+    setTargetSizeValue(tmpl.value);
+    setTargetSizeUnit(tmpl.unit);
   };
 
   return (
@@ -638,7 +666,7 @@ const MainScreen = () => {
         <View style={styles.headerRow}>
           <View style={{flex: 1}} />
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.appName}>convert2gabigabi</Text>
+            <Text style={styles.appName}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
             <Text style={styles.appSubtitle}>画像リサイズツール</Text>
           </View>
           <View style={{flex: 1, alignItems: 'flex-end'}}>
@@ -653,7 +681,7 @@ const MainScreen = () => {
       <Modal visible={aboutVisible} transparent animationType="fade" onRequestClose={() => setAboutVisible(false)}>
         <View style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24}}>
           <View style={{backgroundColor: '#1e1e1e', borderRadius: 16, padding: 24, width: '100%', maxWidth: 360}}>
-            <Text style={{color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center'}}>convert2gabigabi</Text>
+            <Text style={{color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center'}}>GabiGabi - 画像・動画ガビガビ化&指定サイズ圧縮 -</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>画像・動画の変換・圧縮・ガビガビ化ツール</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>ライセンス: GPL v3</Text>
             <Text style={{color: '#ccc', fontSize: 14, marginBottom: 8}}>FFmpeg / FFmpegKit を使用しています</Text>
@@ -717,196 +745,252 @@ const MainScreen = () => {
           </View>
         </View>
 
-        {/* ── Template Section (旧ガビガビレベル) ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>テンプレート</Text>
-          <View style={styles.templateBlock}>
-            <Text style={styles.templateBlockLabel}>ガビガビレベル</Text>
-            <View style={styles.formatRow}>
-              {GABIGABI_LEVELS.map(item => (
-                <TouchableOpacity
-                  key={item.value}
-                  style={[
-                    styles.formatButton,
-                    gabigabiLevel === item.value && styles.gabigabiButtonActive,
-                  ]}
-                  onPress={() => handleTemplateSelect(item.value)}>
-                  <Text
-                    style={[
-                      styles.formatButtonText,
-                      gabigabiLevel === item.value && styles.formatButtonTextActive,
-                    ]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        {/* ── Convert Method Tabs (#277) ── */}
+        <View style={styles.methodTabs}>
+          <TouchableOpacity 
+            style={[styles.methodTab, convertMethod === 'parameters' && styles.methodTabActive]}
+            onPress={() => setConvertMethod('parameters')}>
+            <Text style={[styles.methodTabText, convertMethod === 'parameters' && styles.methodTabTextActive]}>パラメータを設定する</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.methodTab, convertMethod === 'targetSize' && styles.methodTabActive]}
+            onPress={() => setConvertMethod('targetSize')}>
+            <Text style={[styles.methodTabText, convertMethod === 'targetSize' && styles.methodTabTextActive]}>目標サイズを指定する</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Settings ── */}
-
-        {/* #80: video not supported notice */}
-        {/* #110: 動画ガビガビ化対応済み — 通知削除 */}
-
-        {/* ── Resize Slider ── */}
-        <View style={styles.sliderCard}>
-          <ResizeSlider
-            value={resizePercent}
-            onValueChange={handleResizeChange}
-            originalWidth={fileInfo?.width}
-            originalHeight={fileInfo?.height}
-          />
-        </View>
-
-        {/* ── Format Conversion Section ── */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>出力フォーマット</Text>
-          {/* 動画選択時: 動画フォーマットのみ / 画像選択時: 画像フォーマットのみ / 未選択時: 両方表示 */}
-          {selectedMediaType !== 'image' && (
-            <>
-              {selectedMediaType === null && (
-                <Text style={styles.formatGroupLabel}>🎬 動画</Text>
-              )}
-              <View style={[styles.formatRow, styles.formatRowWrap]}>
-                {VIDEO_FORMAT_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.formatButton,
-                      videoOutputFormat === opt.value && styles.formatButtonActive,
-                    ]}
-                    onPress={() => setVideoOutputFormat(opt.value)}>
-                    <Text
+        {convertMethod === 'parameters' ? (
+          <>
+            {/* ── Template Section (旧ガビガビレベル) ── */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>テンプレート</Text>
+              <View style={styles.templateBlock}>
+                <Text style={styles.templateBlockLabel}>ガビガビレベル</Text>
+                <View style={styles.formatRow}>
+                  {GABIGABI_LEVELS.map(item => (
+                    <TouchableOpacity
+                      key={item.value}
                       style={[
-                        styles.formatButtonText,
-                        videoOutputFormat === opt.value && styles.formatButtonTextActive,
-                      ]}>
-                      {opt.label}
-                    </Text>
+                        styles.formatButton,
+                        gabigabiLevel === item.value && styles.gabigabiButtonActive,
+                      ]}
+                      onPress={() => handleTemplateSelect(item.value)}>
+                      <Text
+                        style={[
+                          styles.formatButtonText,
+                          gabigabiLevel === item.value && styles.formatButtonTextActive,
+                        ]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* ── Resize Slider ── */}
+            <View style={styles.sliderCard}>
+              <ResizeSlider
+                value={resizePercent}
+                onValueChange={handleResizeChange}
+                originalWidth={fileInfo?.width}
+                originalHeight={fileInfo?.height}
+              />
+            </View>
+
+            {/* ── Format Conversion Section ── */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>出力フォーマット</Text>
+              {selectedMediaType !== 'image' && (
+                <>
+                  {selectedMediaType === null && (
+                    <Text style={styles.formatGroupLabel}>🎬 動画</Text>
+                  )}
+                  <View style={[styles.formatRow, styles.formatRowWrap]}>
+                    {VIDEO_FORMAT_OPTIONS.map(opt => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[
+                          styles.formatButton,
+                          videoOutputFormat === opt.value && styles.formatButtonActive,
+                        ]}
+                        onPress={() => setVideoOutputFormat(opt.value)}>
+                        <Text
+                          style={[
+                            styles.formatButtonText,
+                            videoOutputFormat === opt.value && styles.formatButtonTextActive,
+                          ]}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+              {selectedMediaType !== 'video' && (
+                <>
+                  {selectedMediaType === null && (
+                    <Text style={[styles.formatGroupLabel, {marginTop: 12}]}>画像</Text>
+                  )}
+                  <View style={styles.formatRow}>
+                    {FORMAT_OPTIONS.map(opt => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[
+                          styles.formatButton,
+                          outputFormat === opt.value && styles.formatButtonActive,
+                        ]}
+                        onPress={() => setOutputFormat(opt.value)}>
+                        <Text
+                          style={[
+                            styles.formatButtonText,
+                            outputFormat === opt.value && styles.formatButtonTextActive,
+                          ]}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {selectedMediaType !== 'video' && (outputFormat === 'jpeg' || outputFormat === 'webp') && (
+                <View style={styles.qualityRow}>
+                  <View style={styles.qualityLabelRow}>
+                    <Text style={styles.qualityLabel}>圧縮率</Text>
+                    <Text style={styles.qualityValue}>{compressionRate}%</Text>
+                  </View>
+                  <CustomSlider
+                    style={styles.qualitySlider}
+                    minimumValue={0}
+                    maximumValue={99}
+                    step={1}
+                    value={compressionRate}
+                    onValueChange={(v: number) => handleQualityChange(Math.round(v))}
+                    minimumTrackTintColor={ACCENT2}
+                    maximumTrackTintColor={BORDER}
+                    thumbTintColor={ACCENT2}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* ── Shrink→Expand Section ── */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>縮小→再拡大</Text>
+                <Text style={styles.sectionHint}>画像を一度縮小して元サイズに戻す。{'\n'}引き伸ばしでブロックノイズが増幅されガビガビに</Text>
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>ON/OFF</Text>
+                <Switch
+                  value={shrinkExpandEnabled}
+                  onValueChange={handleShrinkExpandToggle}
+                  trackColor={{false: BORDER, true: ACCENT}}
+                  thumbColor={shrinkExpandEnabled ? '#fff' : '#888'}
+                />
+              </View>
+              {shrinkExpandEnabled && (
+                <View style={styles.qualityRow}>
+                  <View style={styles.qualityLabelRow}>
+                    <Text style={styles.qualityLabel}>縮小率</Text>
+                    <Text style={styles.qualityValue}>{shrinkExpandRate}%</Text>
+                  </View>
+                  <CustomSlider
+                    style={styles.qualitySlider}
+                    minimumValue={10}
+                    maximumValue={90}
+                    step={1}
+                    value={shrinkExpandRate}
+                    onValueChange={handleShrinkExpandRateChange}
+                    minimumTrackTintColor={ACCENT}
+                    maximumTrackTintColor={BORDER}
+                    thumbTintColor={ACCENT}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* ── Multi-Compress Section ── */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>多重圧縮</Text>
+                <Text style={styles.sectionHint}>JPEG圧縮を繰り返すほど劣化が蓄積。{'\n'}回数が多いほどガビガビに</Text>
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>ON/OFF</Text>
+                <Switch
+                  value={multiCompressEnabled}
+                  onValueChange={handleMultiCompressToggle}
+                  trackColor={{false: BORDER, true: ACCENT}}
+                  thumbColor={multiCompressEnabled ? '#fff' : '#888'}
+                />
+              </View>
+              {multiCompressEnabled && (
+                <View style={styles.qualityRow}>
+                  <View style={styles.qualityLabelRow}>
+                    <Text style={styles.qualityLabel}>圧縮回数</Text>
+                    <Text style={styles.qualityValue}>{multiCompressCount}回</Text>
+                  </View>
+                  <CustomSlider
+                    style={styles.qualitySlider}
+                    minimumValue={1}
+                    maximumValue={10}
+                    step={1}
+                    value={multiCompressCount}
+                    onValueChange={handleMultiCompressCountChange}
+                    minimumTrackTintColor={ACCENT}
+                    maximumTrackTintColor={BORDER}
+                    thumbTintColor={ACCENT}
+                  />
+                </View>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            {/* ── Target Size Settings (#277) ── */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>目標サイズ設定</Text>
+              <View style={styles.targetSizeInputRow}>
+                <TextInput
+                  style={styles.targetSizeInput}
+                  value={targetSizeValue}
+                  onChangeText={setTargetSizeValue}
+                  keyboardType="numeric"
+                  placeholder="0.0"
+                  placeholderTextColor="#666"
+                />
+                <View style={styles.unitButtons}>
+                  {(['KB', 'MB', 'GB'] as SizeUnit[]).map(u => (
+                    <TouchableOpacity
+                      key={u}
+                      style={[styles.unitButton, targetSizeUnit === u && styles.unitButtonActive]}
+                      onPress={() => setTargetSizeUnit(u)}>
+                      <Text style={[styles.unitButtonText, targetSizeUnit === u && styles.unitButtonTextActive]}>{u}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <Text style={[styles.sectionTitle, {marginTop: 20}]}>テンプレート</Text>
+              <View style={styles.targetSizeTemplates}>
+                {TARGET_SIZE_TEMPLATES.map(tmpl => (
+                  <TouchableOpacity
+                    key={tmpl.label}
+                    style={styles.targetSizeTemplate}
+                    onPress={() => handleTargetSizeTemplateSelect(tmpl)}>
+                    <Text style={styles.targetSizeTemplateText}>{tmpl.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </>
-          )}
-          {selectedMediaType !== 'video' && (
-            <>
-              {selectedMediaType === null && (
-                <Text style={[styles.formatGroupLabel, {marginTop: 12}]}>画像</Text>
-              )}
-              <View style={styles.formatRow}>
-                {FORMAT_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.formatButton,
-                      outputFormat === opt.value && styles.formatButtonActive,
-                    ]}
-                    onPress={() => setOutputFormat(opt.value)}>
-                    <Text
-                      style={[
-                        styles.formatButtonText,
-                        outputFormat === opt.value && styles.formatButtonTextActive,
-                      ]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
-
-          {selectedMediaType !== 'video' && (outputFormat === 'jpeg' || outputFormat === 'webp') && (
-            <View style={styles.qualityRow}>
-              <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>圧縮率</Text>
-                <Text style={styles.qualityValue}>{compressionRate}%</Text>
-              </View>
-              <CustomSlider
-                style={styles.qualitySlider}
-                minimumValue={0}
-                maximumValue={99}
-                step={1}
-                value={compressionRate}
-                onValueChange={(v: number) => handleQualityChange(Math.round(v))}
-                minimumTrackTintColor={ACCENT2}
-                maximumTrackTintColor={BORDER}
-                thumbTintColor={ACCENT2}
-              />
+              
+              <Text style={{color: '#666', fontSize: 12, marginTop: 16, lineHeight: 18}}>
+                ※目標サイズに収まるように品質・ビットレートを自動調整します。画像の場合はJPEGに変換されます。
+              </Text>
             </View>
-          )}
-        </View>
-        {/* ── Shrink→Expand Section ── */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>縮小→再拡大</Text>
-            <Text style={styles.sectionHint}>画像を一度縮小して元サイズに戻す。{'\n'}引き伸ばしでブロックノイズが増幅されガビガビに</Text>
-          </View>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>ON/OFF</Text>
-            <Switch
-              value={shrinkExpandEnabled}
-              onValueChange={handleShrinkExpandToggle}
-              trackColor={{false: BORDER, true: ACCENT}}
-              thumbColor={shrinkExpandEnabled ? '#fff' : '#888'}
-            />
-          </View>
-          {shrinkExpandEnabled && (
-            <View style={styles.qualityRow}>
-              <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>縮小率</Text>
-                <Text style={styles.qualityValue}>{shrinkExpandRate}%</Text>
-              </View>
-              <CustomSlider
-                style={styles.qualitySlider}
-                minimumValue={10}
-                maximumValue={90}
-                step={1}
-                value={shrinkExpandRate}
-                onValueChange={handleShrinkExpandRateChange}
-                minimumTrackTintColor={ACCENT}
-                maximumTrackTintColor={BORDER}
-                thumbTintColor={ACCENT}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* ── Multi-Compress Section ── */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>多重圧縮</Text>
-            <Text style={styles.sectionHint}>JPEG圧縮を繰り返すほど劣化が蓄積。{'\n'}回数が多いほどガビガビに</Text>
-          </View>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>ON/OFF</Text>
-            <Switch
-              value={multiCompressEnabled}
-              onValueChange={handleMultiCompressToggle}
-              trackColor={{false: BORDER, true: ACCENT}}
-              thumbColor={multiCompressEnabled ? '#fff' : '#888'}
-            />
-          </View>
-          {multiCompressEnabled && (
-            <View style={styles.qualityRow}>
-              <View style={styles.qualityLabelRow}>
-                <Text style={styles.qualityLabel}>圧縮回数</Text>
-                <Text style={styles.qualityValue}>{multiCompressCount}回</Text>
-              </View>
-              <CustomSlider
-                style={styles.qualitySlider}
-                minimumValue={1}
-                maximumValue={10}
-                step={1}
-                value={multiCompressCount}
-                onValueChange={handleMultiCompressCountChange}
-                minimumTrackTintColor={ACCENT}
-                maximumTrackTintColor={BORDER}
-                thumbTintColor={ACCENT}
-              />
-            </View>
-          )}
-        </View>
+          </>
+        )}
 
 
         {(selectedImage || processedImage) && (
@@ -953,35 +1037,37 @@ const MainScreen = () => {
         )}
 
         {/* Main action buttons */}
-        <TouchableOpacity
-          style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
-          onPress={handleProcess}
-          disabled={!selectedImage || isProcessing}
-          activeOpacity={0.8}>
-          {isProcessing && processingAction === 'gabigabi' ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.buttonText}> 処理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.buttonText}>変換</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.discordButton, (!selectedImage || isProcessing) && styles.disabledButton]}
-          onPress={handleDiscordCompress}
-          disabled={!selectedImage || isProcessing}
-          activeOpacity={0.8}>
-          {processingAction === 'discord' ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.buttonText}> 処理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.buttonText}>Discord用に10MB以下にクイック圧縮</Text>
-          )}
-        </TouchableOpacity>
+        {convertMethod === 'parameters' ? (
+          <TouchableOpacity
+            style={[styles.processButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            onPress={handleProcess}
+            disabled={!selectedImage || isProcessing}
+            activeOpacity={0.8}>
+            {isProcessing && processingAction === 'gabigabi' ? (
+              <View style={styles.processingRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.buttonText}> 処理中...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>変換</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.targetSizeProcessButton, (!selectedImage || isProcessing) && styles.disabledButton]}
+            onPress={handleTargetSizeProcess}
+            disabled={!selectedImage || isProcessing}
+            activeOpacity={0.8}>
+            {isProcessing && processingAction === 'targetSize' ? (
+              <View style={styles.processingRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.buttonText}> 処理中...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>指定サイズ以下に圧縮</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -1171,6 +1257,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  /* method tabs */
+  methodTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#222',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  methodTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  methodTabActive: {
+    backgroundColor: '#333',
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  methodTabText: {
+    fontSize: 13,
+    color: '#888',
+    fontWeight: '600',
+  },
+  methodTabTextActive: {
+    color: '#fff',
+  },
+
   /* size row */
   sizeRow: {
     flexDirection: 'row',
@@ -1211,7 +1325,7 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 0,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1339,6 +1453,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  /* target size settings */
+  targetSizeInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  targetSizeInput: {
+    flex: 1,
+    backgroundColor: '#222',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  unitButtons: {
+    flexDirection: 'row',
+    backgroundColor: '#222',
+    borderRadius: 8,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  unitButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  unitButtonActive: {
+    backgroundColor: '#444',
+  },
+  unitButtonText: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: 'bold',
+  },
+  unitButtonTextActive: {
+    color: '#fff',
+  },
+  targetSizeTemplates: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  targetSizeTemplate: {
+    backgroundColor: '#222',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  targetSizeTemplateText: {
+    color: TEXT_SECONDARY,
+    fontSize: 12,
+  },
+
   /* button row */
   buttonRow: {
     flexDirection: 'row',
@@ -1358,6 +1532,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  targetSizeProcessButton: {
+    backgroundColor: '#5865F2',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#5865F2',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   convertButton: {
     flex: 1,
     backgroundColor: ACCENT2,
@@ -1365,17 +1550,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: ACCENT2,
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  discordButton: {
-    backgroundColor: '#5865F2',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#5865F2',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -1487,22 +1661,6 @@ const styles = StyleSheet.create({
   fileInfoText: {
     fontSize: 13,
     color: TEXT_PRIMARY,
-  },
-
-  /* video notice (#80) */
-  videoNoticeCard: {
-    backgroundColor: '#1e1a10',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ff9800',
-    padding: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  videoNoticeText: {
-    fontSize: 14,
-    color: '#ff9800',
-    fontWeight: '700',
   },
 
   /* video preview (#80) */
