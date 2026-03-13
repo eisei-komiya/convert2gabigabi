@@ -130,6 +130,13 @@ async function compressImageToTarget(
     bestBytes = (outInfo as FileSystem.FileInfo & { size: number }).size ?? 0;
   }
 
+  // リトライ後も目標サイズを超えている場合はエラーを投げる (#290)
+  if (bestBytes > targetBytes) {
+    await FileSystem.deleteAsync(outputUri, { idempotent: true });
+    const targetMB = (targetBytes / (1024 * 1024)).toFixed(1);
+    throw new Error(`画像を目標サイズ（${targetMB}MB）以下に圧縮できませんでした。`);
+  }
+
   return {
     outputUri,
     outputBytes: bestBytes,
