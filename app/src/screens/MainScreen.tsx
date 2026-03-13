@@ -1094,7 +1094,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
           <Text style={styles.videoPreviewText}>動画</Text>
         </View>
       ) : (
-        <TouchableOpacity onPress={() => onImagePress?.(uri)} activeOpacity={0.85}>
+        <TouchableOpacity onPress={() => onPickerPress ? onPickerPress() : onImagePress?.(uri)} activeOpacity={0.85}>
           <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
           <View style={styles.svgOverlay}>
             <Svg width="100%" height="100%" viewBox="0 0 640 640">
