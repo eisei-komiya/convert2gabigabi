@@ -24,6 +24,7 @@ import * as MediaLibrary from 'expo-media-library';
 import Share from 'react-native-share';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ExpoImagePicker from 'expo-image-picker';
+import { Svg, Rect, Path, G } from 'react-native-svg';
 import ImagePickerComponent from '../components/ImagePicker';
 import ResizeSlider from '../components/ResizeSlider';
 import ErrorModal from '../components/ErrorModal';
@@ -1104,6 +1105,15 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
       ) : (
         <TouchableOpacity onPress={() => onImagePress?.(uri)} activeOpacity={0.85}>
           <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
+          <View style={styles.svgOverlay}>
+            <Svg width="100%" height="100%" viewBox="0 0 640 640">
+              <Path
+                d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"
+                fill={ACCENT}
+                opacity="0.6"
+              />
+            </Svg>
+          </View>
           <View style={styles.previewTapHint}>
             <Text style={styles.previewTapHintText}>🔍 タップで拡大</Text>
           </View>
@@ -1239,6 +1249,17 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 150,
+  },
+  svgOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+    pointerEvents: 'none',
   },
   previewTapHint: {
     position: 'absolute',
