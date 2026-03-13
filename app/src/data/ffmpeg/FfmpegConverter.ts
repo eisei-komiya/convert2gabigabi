@@ -98,27 +98,29 @@ export async function convertImage(
       `"${palettePath}"`,
     ].join(' ');
 
-    const pass1Session = await FFmpegKit.execute(pass1);
-    const pass1Rc = await pass1Session.getReturnCode();
+    try {
+      const pass1Session = await FFmpegKit.execute(pass1);
+      const pass1Rc = await pass1Session.getReturnCode();
 
-    if (!ReturnCode.isSuccess(pass1Rc)) {
-      const logs = await extractErrorFromLogs(pass1Session);
-      throw new Error(`GIF パレット生成に失敗しました: ${logs}`);
+      if (!ReturnCode.isSuccess(pass1Rc)) {
+        const logs = await extractErrorFromLogs(pass1Session);
+        throw new Error(`GIF パレット生成に失敗しました: ${logs}`);
+      }
+
+      const pass2 = [
+        '-y',
+        '-i', `"${inputPath}"`,
+        '-i', `"${palettePath}"`,
+        '-lavfi', '"fps=10 [x]; [x][1:v] paletteuse"',
+        `"${outputPath}"`,
+      ].join(' ');
+
+      session = await FFmpegKit.execute(pass2);
+      rc = await session.getReturnCode();
+    } finally {
+      // パレットファイルをクリーンアップ（結果に関わらず）
+      await FileSystem.deleteAsync(`file://${palettePath}`, { idempotent: true });
     }
-
-    const pass2 = [
-      '-y',
-      '-i', `"${inputPath}"`,
-      '-i', `"${palettePath}"`,
-      '-lavfi', '"fps=10 [x]; [x][1:v] paletteuse"',
-      `"${outputPath}"`,
-    ].join(' ');
-
-    session = await FFmpegKit.execute(pass2);
-    rc = await session.getReturnCode();
-
-    // パレットファイルをクリーンアップ（結果に関わらず）
-    await FileSystem.deleteAsync(`file://${palettePath}`, { idempotent: true });
   } else {
     const cmd = [
       '-y',
