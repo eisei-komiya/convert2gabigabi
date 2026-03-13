@@ -295,6 +295,25 @@ const MainScreen = () => {
   const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveMessageOpacity] = useState(new Animated.Value(0));
+
+  const showSaveFeedback = useCallback((message: string) => {
+    setSaveMessage(message);
+    Animated.sequence([
+      Animated.timing(saveMessageOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2000),
+      Animated.timing(saveMessageOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setSaveMessage(null));
+  }, [saveMessageOpacity]);
 
   // #97: file info
   const [fileInfo, setFileInfo] = useState<{name: string; size: string; width: number; height: number} | null>(null);
@@ -556,7 +575,8 @@ const MainScreen = () => {
     }
     try {
       // createAssetAsync はギャラリーを開かずにメディアストアに登録する
-      await MediaLibrary.createAssetAsync(processedImage);
+      const asset = await MediaLibrary.createAssetAsync(processedImage);
+      showSaveFeedback(`保存完了\n${asset.uri}`);
     } catch (err) {
       showError('エラー', `保存に失敗しました: ${String(err)}`);
     }
@@ -651,6 +671,13 @@ const MainScreen = () => {
         message={errorModal.message}
         onClose={hideError}
       />
+
+      {/* ── Save Feedback Toast (#306) ── */}
+      {saveMessage && (
+        <Animated.View style={[styles.saveFeedback, {opacity: saveMessageOpacity}]}>
+          <Text style={styles.saveFeedbackText}>{saveMessage}</Text>
+        </Animated.View>
+      )}
 
       {/* ── Fullscreen Image Modal (#77) ── */}
       <ImageModal
@@ -1097,13 +1124,15 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
         <TouchableOpacity onPress={() => onPickerPress ? onPickerPress() : onImagePress?.(uri)} activeOpacity={0.85}>
           <Image source={{uri}} style={styles.previewImage} resizeMode="cover" />
           <View style={styles.svgOverlay}>
-            <Svg width="100%" height="100%" viewBox="0 0 640 640">
-              <Path
-                d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"
-                fill={ACCENT}
-                opacity="0.6"
-              />
-            </Svg>
+            {onPickerPress && (
+              <Svg width="100%" height="100%" viewBox="0 0 640 640">
+                <Path
+                  d="M500.7 138.7L512 149.4L512 96C512 78.3 526.3 64 544 64C561.7 64 576 78.3 576 96L576 224C576 241.7 561.7 256 544 256L416 256C398.3 256 384 241.7 384 224C384 206.3 398.3 192 416 192L463.9 192L456.3 184.8C456.1 184.6 455.9 184.4 455.7 184.2C380.7 109.2 259.2 109.2 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C238.9 39.1 400.7 39 500.7 138.7z"
+                  fill={ACCENT}
+                  opacity="0.6"
+                />
+              </Svg>
+            )}
           </View>
           <View style={styles.previewTapHint}>
             <Text style={styles.previewTapHintText}>🔍 タップで拡大</Text>
@@ -1248,6 +1277,25 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     pointerEvents: 'none',
+  },
+  saveFeedback: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#444',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  saveFeedbackText: {
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   previewTapHint: {
     position: 'absolute',
