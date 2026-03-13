@@ -79,9 +79,6 @@ const TEMPLATE_SETTINGS: Record<number, {
 
 const TARGET_SIZE_TEMPLATES: {label: string; value: string; unit: SizeUnit}[] = [
   {label: 'Discord 10MB', value: '10', unit: 'MB'},
-  {label: 'Discord 50MB', value: '50', unit: 'MB'},
-  {label: 'メール 5MB', value: '5', unit: 'MB'},
-  {label: '100KB', value: '100', unit: 'KB'},
 ];
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
