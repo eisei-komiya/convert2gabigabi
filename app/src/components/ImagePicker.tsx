@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: BORDER,
     borderStyle: 'dashed',
-    paddingVertical: 20,
+    paddingVertical: 32,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -77,17 +77,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   icon: {
-    fontSize: 32,
+    fontSize: 40,
     marginBottom: 8,
   },
   buttonText: {
     color: '#f0f0f0',
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
   },
   hint: {
     color: TEXT_SECONDARY,
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 4,
   },
 });
