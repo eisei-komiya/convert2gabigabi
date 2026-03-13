@@ -1086,8 +1086,12 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
     <View style={styles.previewLabelRow}>
       <Text style={styles.previewLabel}>{label}</Text>
       {uri && onPickerPress && (
-        <TouchableOpacity onPress={onPickerPress} hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Text style={styles.reloadButton}>🔄</Text>
+        <TouchableOpacity 
+          onPress={onPickerPress} 
+          hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}
+          style={styles.changeButtonContainer}
+        >
+          <Text style={styles.changeButtonText}>変更</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -1199,9 +1203,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
-  reloadButton: {
-    fontSize: 16,
+  changeButtonContainer: {
+    backgroundColor: '#333',
+    paddingHorizontal: 10,
     paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  changeButtonText: {
+    color: '#eee',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   previewEmptyTouchable: {
     width: '100%',
