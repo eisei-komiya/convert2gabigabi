@@ -491,45 +491,50 @@ const MainScreen = () => {
         resultUri = result.outputUri;
         resultBytes = result.outputBytes;
       } else {
-      const inputInfo = await FileSystem.getInfoAsync(selectedImage, {size: true});
-      const inputBytes = inputInfo.exists ? (inputInfo as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
+        const inputInfo = await FileSystem.getInfoAsync(selectedImage, {size: true});
+        const inputBytes = inputInfo.exists ? (inputInfo as FileSystem.FileInfo & {size: number}).size ?? 0 : 0;
 
-      // ガビガビレベル0 かつ フォーマット変換が必要な場合はフォーマット変換のみ
-      // ガビガビレベル1以上の場合はガビガビ化（リサイズ+品質劣化）
-      // 両方の設定を1回の「変換」で適用する
+        // ガビガビレベル0 かつ フォーマット変換が必要な場合はフォーマット変換のみ
+        // ガビガビレベル1以上の場合はガビガビ化（リサイズ+品質劣化）
+        // 両方の設定を1回の「変換」で適用する
 
-      if (gabigabiLevel === null || gabigabiLevel === 0) {
-        // ガビガビなし → フォーマット変換 + リサイズのみ
-        if (resizePercent === 100 && outputFormat === 'jpeg') {
-          // 何も変更なし
-          Alert.alert('変換不要', '現在の設定では変換の必要がありません。\nガビガビレベルを上げるか、フォーマットやリサイズを変更してください。');
-          return;
-        }
-        if (resizePercent < 100) {
-          // リサイズだけ実行（ガビガビレベル0 = 高品質）
-          const result = await resizeImage(selectedImage, resizePercent, 0);
-          resultUri = result.outputUri;
-          resultBytes = result.outputBytes;
+        if (gabigabiLevel === null || gabigabiLevel === 0) {
+          // ガビガビなし → フォーマット変換 + リサイズのみ
+          if (resizePercent === 100 && outputFormat === 'jpeg') {
+            // 何も変更なし
+            Alert.alert('変換不要', '現在の設定では変換の必要がありません。\nガビガビレベルを上げるか、フォーマットやリサイズを変更してください。');
+            return;
+          }
+          if (resizePercent < 100) {
+            // リサイズだけ実行（ガビガビレベル0 = 高品質）
+            const result = await resizeImage(selectedImage, resizePercent, 0, {
+              outputFormat, // #319: フォーマット設定を反映
+              compressionRate,
+            });
+            resultUri = result.outputUri;
+            resultBytes = result.outputBytes;
+          } else {
+            // フォーマット変換のみ
+            const result = await convertImage(selectedImage, {
+              outputFormat,
+              quality: compressionRate,
+            });
+            resultUri = result.outputUri;
+            resultBytes = result.outputBytes;
+          }
         } else {
-          // フォーマット変換のみ
-          const result = await convertImage(selectedImage, {
-            outputFormat,
-            quality: compressionRate,
+          // ガビガビ化（リサイズ + 品質劣化）
+          const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel!, {
+            shrinkExpandEnabled,
+            shrinkExpandRate,
+            multiCompressEnabled,
+            multiCompressCount,
+            outputFormat, // #319: フォーマット設定を反映
+            compressionRate,
           });
           resultUri = result.outputUri;
           resultBytes = result.outputBytes;
         }
-      } else {
-        // ガビガビ化（リサイズ + 品質劣化）
-        const result = await resizeImage(selectedImage, resizePercent, gabigabiLevel!, {
-          shrinkExpandEnabled,
-          shrinkExpandRate,
-          multiCompressEnabled,
-          multiCompressCount,
-        });
-        resultUri = result.outputUri;
-        resultBytes = result.outputBytes;
-      }
       } // end else (image)
 
       setProcessedImage(resultUri);
