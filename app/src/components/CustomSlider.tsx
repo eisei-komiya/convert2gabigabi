@@ -51,17 +51,11 @@ const CustomSlider: React.FC<CustomSliderProps> = ({
           onValueChange(getValueFromX(x));
         }
       },
-      onPanResponderMove: (evt) => {
-        // moveX は画面絶対座標のため trackX（ページ座標）との差分を取る必要があるが、
-        // measure() は非同期なので trackX が未取得の場合がある。
-        // locationX はコンポーネント相対座標で常に信頼できるため優先して使用する。
-        const locationX = evt.nativeEvent.locationX;
-        if (!isNaN(locationX) && locationX >= 0) {
-          onValueChange(getValueFromX(locationX));
-          return;
-        }
-        // フォールバック: moveX - trackX
-        const x = evt.nativeEvent.moveX - trackX.current;
+      onPanResponderMove: (evt, gestureState) => {
+        // locationX は PanResponder において grant 時の相対座標をベースにした累積値となり
+        // ドラッグ中は grant 時点からのオフセット（dx）を加味しないと期待する相対座標にならない。
+        // 最も安定しているのは moveX（絶対座標）から trackX（コンポーネントの画面開始位置）を引く方法。
+        const x = gestureState.moveX - trackX.current;
         if (!isNaN(x)) {
           onValueChange(getValueFromX(x));
         }
