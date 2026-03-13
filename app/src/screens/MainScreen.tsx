@@ -1243,10 +1243,10 @@ const styles = StyleSheet.create({
   },
   svgOverlay: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '50%',
-    height: '50%',
+    top: 4,
+    right: 4,
+    width: 32,
+    height: 32,
     pointerEvents: 'none',
   },
   previewTapHint: {
