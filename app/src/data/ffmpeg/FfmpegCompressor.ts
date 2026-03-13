@@ -1,6 +1,6 @@
 import { FFmpegKit, FFprobeKit, ReturnCode } from 'ffmpeg-kit-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { generateUniqueFileSuffix, extractErrorFromLogs, getCacheDir } from './ffmpegUtils';
+import { generateUniqueFileSuffix, extractErrorFromLogs, getCacheDir, getPasslogConfig } from './ffmpegUtils';
 
 export interface CompressResult {
   outputUri: string;
@@ -196,8 +196,7 @@ async function compressVideoToTarget(
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_compressed_${suffix}.${outputFormat}`;
   const outputPath = outputUri.replace('file://', '');
-  const passlogFilesystemPath = outputPath.replace(`.${outputFormat}`, '_passlog');
-  const passlogUri = outputUri.replace(`.${outputFormat}`, '_passlog');
+  const { uri: passlogUri, path: passlogFilesystemPath } = getPasslogConfig(stem, suffix);
 
   // pass1 開始前に古い passlog ファイルを削除して再試行時の混入を防ぐ (#216)
   // deleteAsync は file:// URI が必要なため passlogUri を使用する (#276)
@@ -325,8 +324,7 @@ async function compressVideoToTarget(
     const retrySuffix = generateUniqueFileSuffix();
     const retryOutputUri = `${cacheDir}${stem}_compressed_${retrySuffix}.${outputFormat}`;
     const retryOutputPath = retryOutputUri.replace('file://', '');
-    const retryPasslogPath = retryOutputPath.replace(`.${outputFormat}`, '_passlog');
-    const retryPasslogUri = retryOutputUri.replace(`.${outputFormat}`, '_passlog');
+    const { uri: retryPasslogUri, path: retryPasslogPath } = getPasslogConfig(stem, retrySuffix);
 
     const retry1Cmd = [
       '-y', '-i', `"${inputPath}"`,
