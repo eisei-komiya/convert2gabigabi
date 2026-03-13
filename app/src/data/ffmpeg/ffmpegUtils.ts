@@ -48,6 +48,19 @@ export function getCacheDir(): string {
 }
 
 /**
+ * FFmpegの2パスログファイルのパスを生成する。
+ * @param stem ファイル名の幹部分
+ * @param suffix ユニークなサフィックス
+ * @returns { uri: string, path: string }
+ */
+export function getPasslogConfig(stem: string, suffix: string): { uri: string, path: string } {
+  const cacheDir = getCacheDir();
+  const uri = `${cacheDir}${stem}_passlog_${suffix}`;
+  const path = uri.replace('file://', '');
+  return { uri, path };
+}
+
+/**
  * キャッシュディレクトリ内の古い一時出力ファイルを削除する。
  * 対象: `_compressed_`, `_gabigabi_`, `_converted_`, `_passlog` を含むファイル名。
  * (#177) FfmpegCompressor/Converter/Processor の重複実装を統合。
