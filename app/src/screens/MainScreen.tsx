@@ -1086,15 +1086,6 @@ const PreviewCard: React.FC<PreviewCardProps> = ({label, uri, mediaType = 'image
   <View style={styles.previewCard}>
     <View style={styles.previewLabelRow}>
       <Text style={styles.previewLabel}>{label}</Text>
-      {uri && onPickerPress && (
-        <TouchableOpacity 
-          onPress={onPickerPress} 
-          hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}
-          style={styles.changeButtonContainer}
-        >
-          <Text style={styles.changeButtonText}>変更</Text>
-        </TouchableOpacity>
-      )}
     </View>
     {uri ? (
       mediaType === 'video' ? (
