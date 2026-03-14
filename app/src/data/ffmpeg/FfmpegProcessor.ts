@@ -165,6 +165,8 @@ export interface ProcessWithFfmpegOptions {
   shrinkExpandRate?: number; // 10〜90 (%)
   multiCompressEnabled?: boolean;
   multiCompressCount?: number; // 1〜10
+  outputFormat?: string; // #319: 追加
+  compressionRate?: number; // #319: 追加
 }
 
 export async function processWithFfmpeg(
@@ -185,6 +187,8 @@ export async function processWithFfmpeg(
     shrinkExpandRate = 50,
     multiCompressEnabled = false,
     multiCompressCount = 3,
+    outputFormat,
+    compressionRate,
   } = options;
 
   // 入力ファイルの存在確認とサイズチェック
@@ -203,8 +207,17 @@ export async function processWithFfmpeg(
   const fileName = inputPath.split('/').pop() ?? 'image.jpg';
   const stem = fileName.replace(/\.[^.]+$/, '');
   const inputExt = (fileName.match(/\.[^.]+$/)?.[0] ?? '.jpg').toLowerCase();
-  // PNG はロスレスなので -q:v が無効になる。JPEG に変換して品質劣化を有効にする。
-  const ext = inputExt === '.png' ? '.jpg' : inputExt;
+
+  // #319: 明示的な出力フォーマット指定がある場合はそれを使用し、なければ入力拡張子に基づく
+  const extMap: Record<string, string> = {
+    jpeg: '.jpg',
+    png: '.png',
+    webp: '.webp',
+    bmp: '.bmp',
+    gif: '.gif',
+  };
+  const ext = outputFormat ? (extMap[outputFormat] ?? '.jpg') : (inputExt === '.png' ? '.jpg' : inputExt);
+  
   const cacheDir = getCacheDir();
   const suffix = generateUniqueFileSuffix();
   const outputUri = `${cacheDir}${stem}_gabigabi_${suffix}${ext}`;
@@ -212,8 +225,14 @@ export async function processWithFfmpeg(
 
   if (__DEV__) console.log('[FFmpeg] outputPath:', outputPath);
 
-  const quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
-  const scale = scalePct / 100;
+  // #319: gabigabiLevel 0 (高品質) かつ compressionRate 指定がある場合はそちらを優先
+  let quality: number;
+  if (gabigabiLevel === 0 && compressionRate !== undefined) {
+    quality = Math.round(1 + 30 * Math.pow(compressionRate / 100, 2.5));
+  } else {
+    quality = GABIGABI_QUALITY[gabigabiLevel] ?? 18;
+  }
+
 
   // -vf フィルターチェーンを構築
   // 1. リサイズ
