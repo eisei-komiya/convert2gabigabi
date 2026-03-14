@@ -278,6 +278,7 @@ const MainScreen = () => {
     setConvertMethod,
     setTargetSizeValue,
     setTargetSizeUnit,
+    resetStore,
   } = useAppStore();
 
   const [errorModal, setErrorModal] = useState<{visible: boolean; title: string; message: string}>({
@@ -371,8 +372,9 @@ const MainScreen = () => {
       setSelectedImage(imageUri);
       setSelectedMediaType(mediaType);
       setProcessedImage(null);
+      resetStore();
     },
-    [setSelectedImage, setProcessedImage],
+    [setSelectedImage, setProcessedImage, resetStore],
   );
 
   const handleOpenPicker = useCallback(async () => {
