@@ -216,6 +216,20 @@ describe('compressForDiscord (video)', () => {
     expect(result.outputUri).toContain('_compressed_');
   });
 
+  it('deletes passlog temp files using file:// URI', async () => {
+    setupVideoFileInfo();
+    await compressForDiscord('file:///videos/clip.mp4');
+
+    expect(mockDeleteAsync).toHaveBeenCalledWith(
+      expect.stringContaining('file:///cache/clip_passlog_12345_abc-0.log'),
+      { idempotent: true },
+    );
+    expect(mockDeleteAsync).toHaveBeenCalledWith(
+      expect.stringContaining('file:///cache/clip_passlog_12345_abc-0.log.mbtree'),
+      { idempotent: true },
+    );
+  });
+
   it('throws when input does not exist', async () => {
     mockGetInfoAsync.mockResolvedValueOnce({ exists: false }); // 1. input
     await expect(compressForDiscord('file:///videos/clip.mp4')).rejects.toThrow('入力ファイルが存在しません');
