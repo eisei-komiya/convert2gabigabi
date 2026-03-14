@@ -39,24 +39,29 @@ interface AppState {
   setConvertMethod: (method: ConvertMethod) => void;
   setTargetSizeValue: (value: string) => void;
   setTargetSizeUnit: (unit: SizeUnit) => void;
+  resetStore: () => void;
 }
 
-export const useAppStore = create<AppState>(set => ({
-  selectedImage: null,
+const DEFAULT_STATE = {
   resizePercent: 100,
-  processedImage: null,
-  isProcessing: false,
-  outputFormat: 'jpeg',
+  outputFormat: 'jpeg' as ImageFormat,
   compressionRate: 0,
-  gabigabiLevel: null,
-  videoOutputFormat: 'mp4',
+  gabigabiLevel: null as number | null,
+  videoOutputFormat: 'mp4' as VideoFormat,
   shrinkExpandEnabled: false,
   shrinkExpandRate: 50,
   multiCompressEnabled: false,
   multiCompressCount: 3,
-  convertMethod: 'parameters',
+  convertMethod: 'parameters' as ConvertMethod,
   targetSizeValue: '10',
-  targetSizeUnit: 'MB',
+  targetSizeUnit: 'MB' as SizeUnit,
+};
+
+export const useAppStore = create<AppState>(set => ({
+  selectedImage: null,
+  processedImage: null,
+  isProcessing: false,
+  ...DEFAULT_STATE,
   
   setSelectedImage: image => set({selectedImage: image}),
   setResizePercent: percent => set({resizePercent: percent}),
@@ -73,4 +78,5 @@ export const useAppStore = create<AppState>(set => ({
   setConvertMethod: method => set({convertMethod: method}),
   setTargetSizeValue: value => set({targetSizeValue: value}),
   setTargetSizeUnit: unit => set({targetSizeUnit: unit}),
+  resetStore: () => set(DEFAULT_STATE),
 }));
