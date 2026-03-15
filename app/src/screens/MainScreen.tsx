@@ -369,12 +369,11 @@ const MainScreen = () => {
 
   const handleImageSelect = useCallback(
     (imageUri: string, mediaType: 'image' | 'video' = 'image') => {
+      resetStore();
       setSelectedImage(imageUri);
       setSelectedMediaType(mediaType);
-      setProcessedImage(null);
-      resetStore();
     },
-    [setSelectedImage, setProcessedImage, resetStore],
+    [setSelectedImage, resetStore],
   );
 
   const handleOpenPicker = useCallback(async () => {
@@ -605,9 +604,8 @@ const MainScreen = () => {
   };
 
   const handleReset = () => {
-    setSelectedImage(null);
+    resetStore();
     setSelectedMediaType(null);
-    setProcessedImage(null);
     outputBytesRef.current = 0;
   };
 

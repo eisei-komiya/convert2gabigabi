@@ -43,6 +43,9 @@ interface AppState {
 }
 
 const DEFAULT_STATE = {
+  selectedImage: null as string | null,
+  processedImage: null as string | null,
+  isProcessing: false,
   resizePercent: 100,
   outputFormat: 'jpeg' as ImageFormat,
   compressionRate: 0,
@@ -58,9 +61,6 @@ const DEFAULT_STATE = {
 };
 
 export const useAppStore = create<AppState>(set => ({
-  selectedImage: null,
-  processedImage: null,
-  isProcessing: false,
   ...DEFAULT_STATE,
   
   setSelectedImage: image => set({selectedImage: image}),
