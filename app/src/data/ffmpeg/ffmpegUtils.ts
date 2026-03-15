@@ -62,7 +62,8 @@ export function getPasslogConfig(stem: string, suffix: string): { uri: string, p
 
 /**
  * キャッシュディレクトリ内の古い一時出力ファイルを削除する。
- * 対象: `_compressed_`, `_gabigabi_`, `_converted_`, `_passlog` を含むファイル名。
+ * 対象: `_compressed_`, `_gabigabi_`, `_converted_`, `_passlog` を含むファイル名、
+ * および GIF 2 パス変換で生成される `*.palette.png`。
  * (#177) FfmpegCompressor/Converter/Processor の重複実装を統合。
  * (#183) passlogファイルもクリーンアップ対象に追加。
  */
@@ -72,7 +73,7 @@ export async function cleanupCachedTempFiles(): Promise<void> {
     const dirInfo = await FileSystem.getInfoAsync(cacheDir);
     if (!dirInfo.exists) return;
     const result = await FileSystem.readDirectoryAsync(cacheDir);
-    const tempPattern = /_(compressed|gabigabi|converted)_|_passlog/;
+    const tempPattern = /_(compressed|gabigabi|converted)_|_passlog|\.palette\.png$/;
     await Promise.all(
       result
         .filter(name => tempPattern.test(name))
